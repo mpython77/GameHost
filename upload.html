@@ -1356,7 +1356,7 @@
         const dlBtn = document.getElementById('qr-download-btn');
 
         title.textContent = `📱 ${gameName}`;
-        img.src = `/api/games/${gameId}/qr?size=300`;
+        img.src = `/api/games/${gameId}/qr?size=300&t=${Date.now()}`;
         urlEl.textContent = `${window.location.origin}/play.html?game=${gameId}`;
         overlay.classList.add('visible');
 
