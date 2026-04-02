@@ -87,6 +87,11 @@ const GAME_CATEGORIES = ['all', 'arcade', 'action', 'puzzle', 'casual', 'strateg
     return this.data.games.filter(g => !g.isPrivate);
   }
 
+  getByOwner(ownerToken) {
+    if (!ownerToken) return [];
+    return this.data.games.filter(g => g.ownerToken === ownerToken);
+  }
+
   getById(id) {
     return this.data.games.find(g => g.id === id);
   }
@@ -264,6 +269,12 @@ app.post('/api/upload', uploadLimiter, upload.single('gameFile'), (req, res) => 
             gameDesc_uz, gameDesc_ru, gameDesc_en,
             category, version, isPrivate } = req.body;
 
+    // Qurilma egasi tokeni
+    const ownerToken = req.headers['x-owner-token'];
+    if (!ownerToken || ownerToken.length < 16) {
+      return res.status(400).json({ error: 'Qurilma identifikatori topilmadi. Sahifani yangilang.' });
+    }
+
     const folderName = (gameName_en || gameName_uz || 'game')
       .toLowerCase()
       .trim()
@@ -296,6 +307,7 @@ app.post('/api/upload', uploadLimiter, upload.single('gameFile'), (req, res) => 
       version: version || '1.0',
       isPrivate: privateMode,
       privateToken: privateToken,
+      ownerToken: ownerToken,
       name: {
         uz: gameName_uz || folderName,
         ru: gameName_ru || gameName_uz || folderName,
@@ -330,19 +342,24 @@ app.post('/api/upload', uploadLimiter, upload.single('gameFile'), (req, res) => 
   }
 });
 
-// ─── API: List Games (faqat PUBLIC) ───
+// ─── API: List Games ───
 app.get('/api/games', apiLimiter, (req, res) => {
   try {
-    if (req.query.all === 'true') {
-      // Admin uchun — tokenlarni sanitize qilib jo'natish
-      const all = db.getAll().map(g => ({
-        ...g,
-        privateToken: g.isPrivate ? g.privateToken : undefined
-      }));
-      res.json(all);
+    if (req.query.mine === 'true') {
+      // Foydalanuvchining o'z o'yinlari (x-owner-token header bilan)
+      const ownerToken = req.headers['x-owner-token'];
+      if (!ownerToken) {
+        return res.json([]);
+      }
+      // ownerToken, privateToken, va ichki tokenlarni yashirish
+      const myGames = db.getByOwner(ownerToken).map(g => {
+        const { ownerToken: _ot, ...safe } = g;
+        return safe;
+      });
+      res.json(myGames);
     } else {
-      // Public katalog — private o'yinlarni yashirish + tokenni olib tashlash
-      res.json(db.getPublic().map(({ privateToken, ...rest }) => rest));
+      // Public katalog — private o'yinlarni yashirish + barcha tokenlarni olib tashlash
+      res.json(db.getPublic().map(({ privateToken, ownerToken, ...rest }) => rest));
     }
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -364,14 +381,20 @@ app.get('/api/games/private/:token', (req, res) => {
   }
 });
 
-// ─── API: Delete Game ───
+// ─── API: Delete Game (faqat egasi o'chira oladi) ───
 app.delete('/api/games/:id', (req, res) => {
   try {
     const gameId = req.params.id;
+    const ownerToken = req.headers['x-owner-token'];
     const game = db.getById(gameId);
 
     if (!game) {
       return res.status(404).json({ error: "O'yin topilmadi" });
+    }
+
+    // Ownership tekshiruvi
+    if (game.ownerToken && game.ownerToken !== ownerToken) {
+      return res.status(403).json({ error: "Bu o'yinni faqat yuklagan odam o'chira oladi" });
     }
 
     // Delete game folder from disk

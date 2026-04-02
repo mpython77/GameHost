@@ -866,6 +866,20 @@
       let uploadedGameId = null;
       let uploadedPrivateLink = null;
 
+      // ─── Qurilma egasi tokeni (per-device unique ID) ───
+      function getOwnerToken() {
+        const STORAGE_KEY = 'gamehost_owner_token';
+        let token = localStorage.getItem(STORAGE_KEY);
+        if (!token || token.length < 32) {
+          // Kriptografik xavfsiz 32 baytli token
+          const bytes = new Uint8Array(32);
+          crypto.getRandomValues(bytes);
+          token = Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('');
+          localStorage.setItem(STORAGE_KEY, token);
+        }
+        return token;
+      }
+
       function init() {
         I18N.init();
         I18N.applyTranslations();
@@ -1004,6 +1018,8 @@
 
           const result = await new Promise((resolve, reject) => {
             xhr.open('POST', '/api/upload');
+            // Qurilma egasi tokenini header orqali yuborish
+            xhr.setRequestHeader('x-owner-token', getOwnerToken());
             xhr.onload = () => {
               try {
                 const data = JSON.parse(xhr.responseText);
@@ -1084,12 +1100,14 @@
       // ─── Games Manager ───
       async function loadGamesList() {
         try {
-          // ?all=true — barcha o'yinlarni ko'rsat (admin uchun)
-          const res = await fetch('/api/games?all=true');
+          // ?mine=true + x-owner-token — faqat o'z o'yinlaringni ko'rsat
+          const res = await fetch('/api/games?mine=true', {
+            headers: { 'x-owner-token': getOwnerToken() }
+          });
           const games = await res.json();
           renderGamesList(games);
         } catch {
-          renderGamesList(GAMES_CONFIG || []);
+          renderGamesList([]);
         }
       }
 
@@ -1148,7 +1166,10 @@
         if (!confirm(`"${gameName}" o'yinini o'chirishni xohlaysizmi?`)) return;
 
         try {
-          const res = await fetch(`/api/games/${gameId}`, { method: 'DELETE' });
+          const res = await fetch(`/api/games/${gameId}`, {
+            method: 'DELETE',
+            headers: { 'x-owner-token': getOwnerToken() }
+          });
           const data = await res.json();
 
           if (data.success) {
