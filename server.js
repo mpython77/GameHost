@@ -56,9 +56,11 @@ class GamesDB {
     this._syncLegacyConfig();
   }
 
-  // Frontend js/games-config.js — faqat PUBLIC o'yinlarni yozadi
+  // Frontend js/games-config.js — faqat PUBLIC o'yinlarni yozadi (tokenlar chiqariladi)
   _syncLegacyConfig() {
-    const publicGames = this.data.games.filter(g => !g.isPrivate);
+    const publicGames = this.data.games
+      .filter(g => !g.isPrivate)
+      .map(({ ownerToken, privateToken, ...safe }) => safe);
     const configStr = JSON.stringify(publicGames, null, 2)
       .replace(/"(\w+)":/g, '$1:')
       .replace(/"/g, "'");
