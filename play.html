@@ -119,7 +119,7 @@
     const Player = (() => {
       let currentGame = null;
 
-      function init() {
+      async function init() {
         // Init i18n
         I18N.init();
         I18N.applyTranslations();
@@ -150,11 +150,25 @@
           return;
         }
 
-        // Find game config (public game)
-        currentGame = GAMES_CONFIG.find(g => g.id === gameId);
+        // API'dan o'yin ma'lumotlarini yuklash (production uchun muhim)
+        try {
+          const res = await fetch('/api/games');
+          if (res.ok) {
+            const apiGames = await res.json();
+            currentGame = apiGames.find(g => g.id === gameId);
+          }
+        } catch {}
+
+        // Fallback: statik config
         if (!currentGame) {
-          window.location.href = 'index.html';
-          return;
+          currentGame = (typeof GAMES_CONFIG !== 'undefined')
+            ? GAMES_CONFIG.find(g => g.id === gameId)
+            : null;
+        }
+
+        if (!currentGame) {
+          // Oxirgi urinish: folder orqali yuklash
+          currentGame = { id: gameId, folder: gameId, name: { uz: gameId, ru: gameId, en: gameId } };
         }
 
         // Update title

@@ -13,7 +13,7 @@ const App = (() => {
   const $$ = (sel) => document.querySelectorAll(sel);
 
   // ─── Initialize ───
-  function init() {
+  async function init() {
     // Init i18n
     I18N.init();
 
@@ -23,6 +23,21 @@ const App = (() => {
     setupLangSwitcher();
     setupFilters();
     setupMobileMenu();
+
+    // O'yinlarni API'dan yuklash (production uchun muhim)
+    try {
+      const res = await fetch('/api/games');
+      if (res.ok) {
+        const apiGames = await res.json();
+        if (apiGames.length > 0) {
+          // Global GAMES_CONFIG ni API dan yangilash
+          window.GAMES_CONFIG = apiGames;
+        }
+      }
+    } catch {
+      // API ishlamasa GAMES_CONFIG statik fayldan foydalanish
+      console.log('API mavjud emas, statik config ishlatilmoqda');
+    }
 
     // Render
     renderGames();
