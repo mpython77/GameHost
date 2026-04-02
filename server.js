@@ -93,7 +93,20 @@ const GAME_CATEGORIES = ['all', 'arcade', 'action', 'puzzle', 'casual', 'strateg
 
   getByOwner(ownerToken) {
     if (!ownerToken) return [];
-    return this.data.games.filter(g => g.ownerToken === ownerToken);
+    return this.data.games.filter(g => g.ownerToken === ownerToken || !g.ownerToken);
+  }
+
+  getUnclaimed() {
+    return this.data.games.filter(g => !g.ownerToken);
+  }
+
+  claimGame(gameId, ownerToken) {
+    const game = this.getById(gameId);
+    if (!game) return null;
+    if (game.ownerToken) return null; // allaqachon egalangan
+    game.ownerToken = ownerToken;
+    this._save();
+    return game;
   }
 
   getById(id) {
@@ -436,7 +449,7 @@ app.get('/api/games/:id/qr', async (req, res) => {
       const png = await QRCode.toBuffer(gameUrl, {
         width: size,
         margin: 1,
-        color: { dark: '#ffffff', light: '#00000000' },
+        color: { dark: '#000000', light: '#00000000' },
         errorCorrectionLevel: 'M'
       });
       res.setHeader('Content-Type', 'image/png');
@@ -482,6 +495,29 @@ app.get('/api/games/private/:token', (req, res) => {
     // Token va ichki ma'lumotlarni yashirish
     const { privateToken, ...safeGame } = game;
     res.json(safeGame);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ─── API: Claim unclaimed games (egasiz o'yinlarni o'ziga olish) ───
+app.post('/api/games/claim', (req, res) => {
+  try {
+    const ownerToken = req.headers['x-owner-token'];
+    if (!ownerToken) {
+      return res.status(400).json({ error: 'Owner token kerak' });
+    }
+
+    const unclaimed = db.getUnclaimed();
+    let claimed = 0;
+
+    unclaimed.forEach(game => {
+      db.claimGame(game.id, ownerToken);
+      claimed++;
+    });
+
+    console.log(`  📌  ${claimed} ta egasiz o'yin egalandi`);
+    res.json({ success: true, claimed });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

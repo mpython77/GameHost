@@ -1226,9 +1226,17 @@
       // ─── Games Manager ───
       async function loadGamesList() {
         try {
+          const token = getOwnerToken();
+
+          // Avval egasiz o'yinlarni avtomatik claim qilish
+          await fetch('/api/games/claim', {
+            method: 'POST',
+            headers: { 'x-owner-token': token }
+          }).catch(() => {});
+
           // ?mine=true + x-owner-token — faqat o'z o'yinlaringni ko'rsat
           const res = await fetch('/api/games?mine=true', {
-            headers: { 'x-owner-token': getOwnerToken() }
+            headers: { 'x-owner-token': token }
           });
           const games = await res.json();
           renderGamesList(games);
