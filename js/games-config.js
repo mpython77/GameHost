@@ -20,7 +20,9 @@ const GAMES_CONFIG = [
       ru: '',
       en: ''
     },
-    createdAt: '2026-04-02T11:56:27.532Z'
+    createdAt: '2026-04-02T11:56:27.532Z',
+    playCount: 1,
+    lastPlayedAt: '2026-04-02T13:20:13.050Z'
   }
 ];
 

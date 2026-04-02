@@ -11,6 +11,8 @@ const crypto = require('crypto');
 const compression = require('compression');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
+const QRCode = require('qrcode');
+const AdmZip = require('adm-zip');
 
 const app = express();
 const PORT = process.env.PORT || 8080;
@@ -236,15 +238,17 @@ const apiLimiter = rateLimit({
   legacyHeaders: false
 });
 
-// ─── Multer config ───
+// ─── Multer config (HTML + ZIP) ───
 const upload = multer({
   dest: UPLOADS_DIR,
   limits: { fileSize: 100 * 1024 * 1024 },
   fileFilter: (req, file, cb) => {
-    if (file.mimetype === 'text/html' || file.originalname.endsWith('.html')) {
+    const ext = path.extname(file.originalname).toLowerCase();
+    const allowed = ['.html', '.zip'];
+    if (allowed.includes(ext) || file.mimetype === 'text/html' || file.mimetype === 'application/zip') {
       cb(null, true);
     } else {
-      cb(new Error('Faqat HTML fayllar qabul qilinadi! (Playable Ads)'), false);
+      cb(new Error('Faqat HTML yoki ZIP fayllar qabul qilinadi!'), false);
     }
   }
 });
@@ -291,10 +295,54 @@ app.post('/api/upload', uploadLimiter, upload.single('gameFile'), (req, res) => 
 
     fs.mkdirSync(gameDir, { recursive: true });
 
-    // Move uploaded HTML → games folder as index.html
-    const indexPath = path.join(gameDir, 'index.html');
-    fs.copyFileSync(req.file.path, indexPath);
-    fs.unlinkSync(req.file.path);
+    // ─── Fayl turini aniqlash va extract qilish ───
+    const ext = path.extname(req.file.originalname).toLowerCase();
+
+    if (ext === '.zip') {
+      // ZIP faylni ochish
+      try {
+        const zip = new AdmZip(req.file.path);
+        zip.extractAllTo(gameDir, true);
+
+        // index.html borligini tekshirish (ichki papkada ham qidirish)
+        let indexFound = false;
+        if (fs.existsSync(path.join(gameDir, 'index.html'))) {
+          indexFound = true;
+        } else {
+          // Bitta ichki papka bo'lsa, undagi fayllarni ko'tarish
+          const entries = fs.readdirSync(gameDir);
+          if (entries.length === 1) {
+            const subDir = path.join(gameDir, entries[0]);
+            if (fs.statSync(subDir).isDirectory() && fs.existsSync(path.join(subDir, 'index.html'))) {
+              // Ichki papkadan tashqariga ko'chirish
+              const subEntries = fs.readdirSync(subDir);
+              subEntries.forEach(f => {
+                fs.renameSync(path.join(subDir, f), path.join(gameDir, f));
+              });
+              fs.rmdirSync(subDir);
+              indexFound = true;
+            }
+          }
+        }
+
+        if (!indexFound) {
+          fs.rmSync(gameDir, { recursive: true, force: true });
+          fs.unlinkSync(req.file.path);
+          return res.status(400).json({ error: 'ZIP ichida index.html fayli topilmadi!' });
+        }
+      } catch (zipErr) {
+        fs.rmSync(gameDir, { recursive: true, force: true });
+        if (fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
+        return res.status(400).json({ error: 'ZIP faylni ochishda xatolik: ' + zipErr.message });
+      }
+    } else {
+      // HTML faylni to'g'ridan-to'g'ri ko'chirish
+      const indexPath = path.join(gameDir, 'index.html');
+      fs.copyFileSync(req.file.path, indexPath);
+    }
+
+    // Uploaded faylni tozalash
+    if (fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
 
     // Generate private token if private mode
     const privateMode = isPrivate === 'true' || isPrivate === '1' || isPrivate === 'on';
@@ -310,6 +358,8 @@ app.post('/api/upload', uploadLimiter, upload.single('gameFile'), (req, res) => 
       isPrivate: privateMode,
       privateToken: privateToken,
       ownerToken: ownerToken,
+      playCount: 0,
+      lastPlayedAt: null,
       name: {
         uz: gameName_uz || folderName,
         ru: gameName_ru || gameName_uz || folderName,
@@ -341,6 +391,60 @@ app.post('/api/upload', uploadLimiter, upload.single('gameFile'), (req, res) => 
       try { fs.unlinkSync(req.file.path); } catch (e) { /* ignore */ }
     }
     res.status(500).json({ error: err.message || 'Server xatosi' });
+  }
+});
+
+// ─── API: Track Play (o'yin o'ynalganda) ───
+app.post('/api/games/:id/play', (req, res) => {
+  try {
+    const game = db.getById(req.params.id);
+    if (!game) return res.status(404).json({ error: "O'yin topilmadi" });
+
+    game.playCount = (game.playCount || 0) + 1;
+    game.lastPlayedAt = new Date().toISOString();
+    db._save();
+
+    res.json({ success: true, playCount: game.playCount });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ─── API: QR Code generatsiya ───
+app.get('/api/games/:id/qr', async (req, res) => {
+  try {
+    const game = db.getById(req.params.id);
+    if (!game) return res.status(404).json({ error: "O'yin topilmadi" });
+
+    // O'yin URL'ini aniqlash
+    const baseUrl = `${req.protocol}://${req.get('host')}`;
+    let gameUrl;
+    if (game.isPrivate && game.privateToken) {
+      gameUrl = `${baseUrl}/play.html?token=${game.privateToken}`;
+    } else {
+      gameUrl = `${baseUrl}/play.html?game=${game.id}`;
+    }
+
+    const size = parseInt(req.query.size) || 300;
+    const format = req.query.format || 'png';
+
+    if (format === 'svg') {
+      const svg = await QRCode.toString(gameUrl, { type: 'svg', width: size, margin: 1 });
+      res.setHeader('Content-Type', 'image/svg+xml');
+      res.send(svg);
+    } else {
+      const png = await QRCode.toBuffer(gameUrl, {
+        width: size,
+        margin: 1,
+        color: { dark: '#ffffff', light: '#00000000' },
+        errorCorrectionLevel: 'M'
+      });
+      res.setHeader('Content-Type', 'image/png');
+      res.setHeader('Cache-Control', 'public, max-age=86400');
+      res.send(png);
+    }
+  } catch (err) {
+    res.status(500).json({ error: err.message });
   }
 });
 

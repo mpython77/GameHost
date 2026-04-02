@@ -226,7 +226,12 @@
         iframe.addEventListener('load', () => {
           setTimeout(() => {
             loading.classList.add('hidden');
-          }, 500); // Small delay for smooth transition
+          }, 500);
+
+          // Play counter tracking
+          if (currentGame.id) {
+            fetch(`/api/games/${currentGame.id}/play`, { method: 'POST' }).catch(() => {});
+          }
         });
 
         iframe.addEventListener('error', () => {

@@ -206,6 +206,9 @@ const App = (() => {
           <div class="game-card-footer">
             <div class="game-card-meta">
               <span class="game-card-meta-item">
+                <span>▶ ${game.playCount || 0}</span>
+              </span>
+              <span class="game-card-meta-item">
                 <span>v${escapeHTML(game.version || '1.0')}</span>
               </span>
             </div>
