@@ -1,0 +1,33 @@
+# Dependencies
+node_modules/
+
+# Temporary uploads
+uploads/
+
+# Old games directory (migrated to data/games/)
+games/
+
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# IDE
+.vscode/
+.idea/
+
+# Logs
+*.log
+npm-debug.log*
+
+# Environment
+.env
+.env.local
+.env.production
+
+# Data — Railway Volume ga joylashtiriladi
+# Lokal ishlatganda data/ git'ga kiritiladi,
+# lekin Railway'da Volume ulab berish kerak
+# Agar o'yinlarni git orqali deploy qilmoqchi bo'lsangiz
+# quyidagi qatorlarni commentga oling:
+# data/
