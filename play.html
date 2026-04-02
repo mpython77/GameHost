@@ -134,16 +134,23 @@
           });
         });
 
-        // Get game ID from URL
+        // Get game ID or private token from URL
         const params = new URLSearchParams(window.location.search);
         const gameId = params.get('game');
+        const privateToken = params.get('token');
+
+        if (privateToken) {
+          // Private game — load from API via token
+          loadPrivateGame(privateToken);
+          return;
+        }
 
         if (!gameId) {
           window.location.href = 'index.html';
           return;
         }
 
-        // Find game config
+        // Find game config (public game)
         currentGame = GAMES_CONFIG.find(g => g.id === gameId);
         if (!currentGame) {
           window.location.href = 'index.html';
@@ -159,7 +166,33 @@
         // Setup controls
         setupControls();
 
-        // Keyboard shortcut: ESC to go back, F to fullscreen
+        // Keyboard shortcuts
+        setupKeyboardShortcuts();
+      }
+
+      async function loadPrivateGame(token) {
+        try {
+          const res = await fetch(`/api/games/private/${token}`);
+          if (!res.ok) {
+            document.getElementById('player-loading').innerHTML = `
+              <div class="loading-text" style="color: #ef4444;">🔒 Maxfiy o'yin topilmadi yoki token noto'g'ri</div>
+            `;
+            return;
+          }
+          currentGame = await res.json();
+
+          updateTitle();
+          loadGame();
+          setupControls();
+          setupKeyboardShortcuts();
+        } catch (err) {
+          document.getElementById('player-loading').innerHTML = `
+            <div class="loading-text" style="color: #ef4444;">Server bilan bog'lanib bo'lmadi</div>
+          `;
+        }
+      }
+
+      function setupKeyboardShortcuts() {
         document.addEventListener('keydown', (e) => {
           if (e.key === 'Escape') {
             const page = document.getElementById('player-page');

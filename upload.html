@@ -555,6 +555,123 @@
       .drop-zone { padding: var(--space-2xl) var(--space-md); }
       .manager-item { flex-wrap: wrap; }
     }
+
+    /* ── Toggle Switch ── */
+    .private-toggle-wrapper {
+      display: flex;
+      align-items: center;
+      gap: var(--space-md);
+    }
+
+    .toggle-switch {
+      position: relative;
+      display: inline-block;
+      width: 48px;
+      height: 26px;
+      flex-shrink: 0;
+    }
+
+    .toggle-switch input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+
+    .toggle-slider {
+      position: absolute;
+      cursor: pointer;
+      inset: 0;
+      background: var(--bg-glass);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-full);
+      transition: var(--transition-base);
+    }
+
+    .toggle-slider::before {
+      content: '';
+      position: absolute;
+      height: 20px;
+      width: 20px;
+      left: 2px;
+      bottom: 2px;
+      background: var(--text-muted);
+      border-radius: 50%;
+      transition: var(--transition-base);
+    }
+
+    .toggle-switch input:checked + .toggle-slider {
+      background: var(--accent-primary);
+      border-color: var(--accent-primary);
+    }
+
+    .toggle-switch input:checked + .toggle-slider::before {
+      transform: translateX(22px);
+      background: white;
+    }
+
+    .private-hint {
+      font-size: var(--font-xs);
+      color: var(--text-muted);
+      line-height: 1.4;
+    }
+
+    /* ── Private Badge (Manager) ── */
+    .manager-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 3px;
+      padding: 2px 8px;
+      border-radius: var(--radius-full);
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.03em;
+    }
+
+    .manager-badge.public {
+      background: rgba(16, 185, 129, 0.15);
+      color: #34d399;
+    }
+
+    .manager-badge.private {
+      background: rgba(239, 68, 68, 0.15);
+      color: #f87171;
+    }
+
+    /* ── Private Link Box ── */
+    .private-link-box {
+      display: flex;
+      align-items: center;
+      gap: var(--space-sm);
+      margin-top: var(--space-sm);
+      padding: var(--space-sm) var(--space-md);
+      background: rgba(124, 58, 237, 0.08);
+      border: 1px solid var(--border-accent);
+      border-radius: var(--radius-sm);
+      font-size: var(--font-xs);
+      word-break: break-all;
+    }
+
+    .private-link-box a {
+      color: var(--accent-primary-light);
+      flex: 1;
+    }
+
+    .copy-btn {
+      padding: 4px 10px;
+      border-radius: var(--radius-full);
+      font-size: 10px;
+      font-weight: 700;
+      background: var(--accent-gradient);
+      color: white;
+      cursor: pointer;
+      border: none;
+      white-space: nowrap;
+      transition: var(--transition-fast);
+    }
+
+    .copy-btn:hover {
+      box-shadow: var(--shadow-glow-sm);
+    }
   </style>
 </head>
 <body>
@@ -658,6 +775,19 @@
                 </select>
               </div>
 
+              <!-- Private Mode Toggle -->
+              <div class="form-group">
+                <label class="form-label">🔒 Maxfiy rejim</label>
+                <div class="private-toggle-wrapper">
+                  <label class="toggle-switch" for="isPrivate">
+                    <input type="checkbox" id="isPrivate">
+                    <span class="toggle-slider"></span>
+                  </label>
+                  <span class="private-hint" id="private-hint">
+                    Katalogda ko'rinmaydi. Faqat maxfiy link orqali kirish mumkin.
+                  </span>
+                </div>
+              </div>
               <!-- Descriptions -->
               <div class="form-group full-width">
                 <label class="form-label">
@@ -856,6 +986,7 @@
         formData.append('gameDesc_ru', document.getElementById('gameDesc_ru').value);
         formData.append('category', document.getElementById('category').value);
         formData.append('version', '1.0');
+        formData.append('isPrivate', document.getElementById('isPrivate').checked ? 'true' : 'false');
 
         try {
           const xhr = new XMLHttpRequest();
@@ -890,7 +1021,8 @@
 
           // Success!
           uploadedGameId = result.game.id;
-          showResult(true, result.message);
+          uploadedPrivateLink = result.privateLink || null;
+          showResult(true, result.message, result.privateLink);
           loadGamesList();
 
         } catch (err) {
@@ -902,7 +1034,7 @@
         }
       }
 
-      function showResult(success, message) {
+      function showResult(success, message, privateLink) {
         document.getElementById('upload-form').style.display = 'none';
         const result = document.getElementById('upload-result');
         result.classList.add('visible');
@@ -913,7 +1045,28 @@
         document.getElementById('result-text').textContent = message;
         document.getElementById('result-text').className = 
           'result-text' + (success ? '' : ' result-error');
-        document.getElementById('result-play').style.display = success ? '' : 'none';
+
+        // Private link da play.html?token=xxx orqali o'ynash
+        if (success && privateLink) {
+          document.getElementById('result-play').onclick = () => {
+            window.location.href = privateLink;
+          };
+          document.getElementById('result-play').style.display = '';
+          // Private link ko'rsatish
+          const fullLink = window.location.origin + privateLink;
+          document.getElementById('result-text').innerHTML = message +
+            `<div class="private-link-box" style="margin-top: 12px;">
+              🔒 <a href="${privateLink}">${fullLink}</a>
+              <button class="copy-btn" onclick="navigator.clipboard.writeText('${fullLink}'); this.textContent='✓ Nusxalandi'">Nusxalash</button>
+            </div>`;
+        } else if (success) {
+          document.getElementById('result-play').style.display = '';
+          document.getElementById('result-play').onclick = () => {
+            window.location.href = `play.html?game=${uploadedGameId}`;
+          };
+        } else {
+          document.getElementById('result-play').style.display = 'none';
+        }
       }
 
       function resetForm() {
@@ -928,7 +1081,8 @@
       // ─── Games Manager ───
       async function loadGamesList() {
         try {
-          const res = await fetch('/api/games');
+          // ?all=true — barcha o'yinlarni ko'rsat (admin uchun)
+          const res = await fetch('/api/games?all=true');
           const games = await res.json();
           renderGamesList(games);
         } catch {
@@ -950,20 +1104,36 @@
           const thumb = game.thumbnail 
             ? `<img src="games/${game.folder}/${game.thumbnail}" alt="${name}">`
             : '🎮';
+          const isPrivate = game.isPrivate;
+          const badge = isPrivate
+            ? '<span class="manager-badge private">🔒 PRIVATE</span>'
+            : '<span class="manager-badge public">🌐 PUBLIC</span>';
+          
+          const playLink = isPrivate && game.privateToken
+            ? `play.html?token=${game.privateToken}`
+            : `play.html?game=${game.id}`;
+
+          const privateBox = isPrivate && game.privateToken
+            ? `<div class="private-link-box">
+                 🔒 <a href="${playLink}" target="_blank">${window.location.origin}/${playLink}</a>
+                 <button class="copy-btn" onclick="event.stopPropagation(); navigator.clipboard.writeText('${window.location.origin}/${playLink}'); this.textContent='✓'">Nusxalash</button>
+               </div>`
+            : '';
 
           return `
             <div class="manager-item" data-id="${game.id}">
               <div class="manager-item-thumb">${thumb}</div>
               <div class="manager-item-info">
-                <div class="manager-item-name">${name}</div>
+                <div class="manager-item-name">${name} ${badge}</div>
                 <div class="manager-item-meta">
                   <span>${category}</span>
                   <span>v${game.version || '1.0'}</span>
                   <span>${game.folder}/</span>
                 </div>
+                ${privateBox}
               </div>
               <div class="manager-item-actions">
-                <a href="play.html?game=${game.id}" class="manager-btn play">▶ O'ynash</a>
+                <a href="${playLink}" class="manager-btn play">▶ O'ynash</a>
                 <button class="manager-btn delete" onclick="Upload.deleteGame('${game.id}', '${name}')">🗑️ O'chirish</button>
               </div>
             </div>

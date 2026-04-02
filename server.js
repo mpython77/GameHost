@@ -7,6 +7,7 @@ const express = require('express');
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
+const crypto = require('crypto');
 const compression = require('compression');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
@@ -55,9 +56,10 @@ class GamesDB {
     this._syncLegacyConfig();
   }
 
-  // Frontend js/games-config.js ni ham yangilab turadi
+  // Frontend js/games-config.js — faqat PUBLIC o'yinlarni yozadi
   _syncLegacyConfig() {
-    const configStr = JSON.stringify(this.data.games, null, 2)
+    const publicGames = this.data.games.filter(g => !g.isPrivate);
+    const configStr = JSON.stringify(publicGames, null, 2)
       .replace(/"(\w+)":/g, '$1:')
       .replace(/"/g, "'");
 
@@ -81,8 +83,16 @@ const GAME_CATEGORIES = ['all', 'arcade', 'action', 'puzzle', 'casual', 'strateg
     return this.data.games;
   }
 
+  getPublic() {
+    return this.data.games.filter(g => !g.isPrivate);
+  }
+
   getById(id) {
     return this.data.games.find(g => g.id === id);
+  }
+
+  getByToken(token) {
+    return this.data.games.find(g => g.privateToken === token);
   }
 
   add(game) {
@@ -103,6 +113,10 @@ const GAME_CATEGORIES = ['all', 'arcade', 'action', 'puzzle', 'casual', 'strateg
 
   count() {
     return this.data.games.length;
+  }
+
+  countPublic() {
+    return this.data.games.filter(g => !g.isPrivate).length;
   }
 }
 
@@ -248,7 +262,7 @@ app.post('/api/upload', uploadLimiter, upload.single('gameFile'), (req, res) => 
 
     const { gameName_uz, gameName_ru, gameName_en,
             gameDesc_uz, gameDesc_ru, gameDesc_en,
-            category, version } = req.body;
+            category, version, isPrivate } = req.body;
 
     const folderName = (gameName_en || gameName_uz || 'game')
       .toLowerCase()
@@ -269,6 +283,10 @@ app.post('/api/upload', uploadLimiter, upload.single('gameFile'), (req, res) => 
     fs.copyFileSync(req.file.path, indexPath);
     fs.unlinkSync(req.file.path);
 
+    // Generate private token if private mode
+    const privateMode = isPrivate === 'true' || isPrivate === '1' || isPrivate === 'on';
+    const privateToken = privateMode ? crypto.randomBytes(16).toString('hex') : null;
+
     // Save to database
     const gameConfig = {
       id: folderName,
@@ -276,6 +294,8 @@ app.post('/api/upload', uploadLimiter, upload.single('gameFile'), (req, res) => 
       thumbnail: null,
       category: category || 'arcade',
       version: version || '1.0',
+      isPrivate: privateMode,
+      privateToken: privateToken,
       name: {
         uz: gameName_uz || folderName,
         ru: gameName_ru || gameName_uz || folderName,
@@ -290,12 +310,15 @@ app.post('/api/upload', uploadLimiter, upload.single('gameFile'), (req, res) => 
 
     db.add(gameConfig);
 
-    console.log(`  ✅  O'yin yuklandi: ${folderName}`);
+    console.log(`  ✅  O'yin yuklandi: ${folderName}${privateMode ? ' (🔒 PRIVATE)' : ''}`);
 
     res.json({
       success: true,
       message: `"${gameConfig.name.uz}" muvaffaqiyatli yuklandi!`,
-      game: gameConfig
+      game: gameConfig,
+      privateLink: privateMode
+        ? `/play.html?token=${privateToken}`
+        : null
     });
 
   } catch (err) {
@@ -307,10 +330,28 @@ app.post('/api/upload', uploadLimiter, upload.single('gameFile'), (req, res) => 
   }
 });
 
-// ─── API: List Games ───
+// ─── API: List Games (faqat PUBLIC) ───
 app.get('/api/games', apiLimiter, (req, res) => {
   try {
-    res.json(db.getAll());
+    // ?all=true — admin uchun (upload.html Manager)
+    if (req.query.all === 'true') {
+      res.json(db.getAll());
+    } else {
+      res.json(db.getPublic());
+    }
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ─── API: Private Game Access (token orqali) ───
+app.get('/api/games/private/:token', (req, res) => {
+  try {
+    const game = db.getByToken(req.params.token);
+    if (!game) {
+      return res.status(404).json({ error: 'Maxfiy o\'yin topilmadi yoki token noto\'g\'ri' });
+    }
+    res.json(game);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
