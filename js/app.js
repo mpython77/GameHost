@@ -177,19 +177,19 @@ const App = (() => {
 
   // ─── Create Game Card HTML ───
   function createGameCard(game, index) {
-    const name = I18N.localize(game.name);
-    const description = I18N.localize(game.description);
-    const categoryLabel = I18N.t(`category.${game.category}`);
+    const name = escapeHTML(I18N.localize(game.name));
+    const description = escapeHTML(I18N.localize(game.description));
+    const categoryLabel = escapeHTML(I18N.t(`category.${game.category}`));
     const thumbnailSrc = game.thumbnail
       ? `games/${game.folder}/${game.thumbnail}`
       : null;
 
     const thumbnailHTML = thumbnailSrc
-      ? `<img src="${thumbnailSrc}" alt="${name}" loading="lazy">`
+      ? `<img src="${escapeHTML(thumbnailSrc)}" alt="${name}" loading="lazy">`
       : generatePlaceholderThumbnail(game, name);
 
     return `
-      <article class="game-card" data-game-id="${game.id}" id="game-card-${game.id}"
+      <article class="game-card" data-game-id="${escapeHTML(game.id)}" id="game-card-${escapeHTML(game.id)}"
                style="animation-delay: ${index * 0.06}s">
         <div class="game-card-thumbnail">
           ${thumbnailHTML}
@@ -206,10 +206,10 @@ const App = (() => {
           <div class="game-card-footer">
             <div class="game-card-meta">
               <span class="game-card-meta-item">
-                <span>v${game.version || '1.0'}</span>
+                <span>v${escapeHTML(game.version || '1.0')}</span>
               </span>
             </div>
-            <button class="play-btn" onclick="event.stopPropagation(); App.navigateToGame('${game.id}')">
+            <button class="play-btn" onclick="event.stopPropagation(); App.navigateToGame('${escapeHTML(game.id)}')">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
               ${I18N.t('card.play')}
             </button>
@@ -229,7 +229,7 @@ const App = (() => {
       strategy: ['#2563eb', '#60a5fa'],
     };
     const [c1, c2] = colors[game.category] || colors.arcade;
-    const initials = name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
+    const initials = (name || '?').split(' ').filter(w => w.length > 0).map(w => w[0]).join('').slice(0, 2).toUpperCase() || '?';
 
     return `
       <svg width="100%" height="100%" viewBox="0 0 480 300" xmlns="http://www.w3.org/2000/svg">
@@ -298,6 +298,14 @@ const App = (() => {
       clearTimeout(timer);
       timer = setTimeout(() => fn(...args), delay);
     };
+  }
+
+  // ─── Utility: Escape HTML (XSS prevention) ───
+  function escapeHTML(str) {
+    if (!str) return '';
+    const div = document.createElement('div');
+    div.textContent = str;
+    return div.innerHTML;
   }
 
   // ─── Public API ───

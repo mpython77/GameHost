@@ -21,24 +21,6 @@ const GAMES_CONFIG = [
       en: ''
     },
     createdAt: '2026-04-02T11:56:27.532Z'
-  },
-  {
-    id: 'applovin',
-    folder: 'applovin',
-    thumbnail: null,
-    category: 'casual',
-    version: '1.0',
-    name: {
-      uz: 'AppLovin',
-      ru: 'tes uchun bu ',
-      en: 'AppLovin'
-    },
-    description: {
-      uz: 'xaxaxaxaxax ',
-      ru: 'xaxaxaxaxax ',
-      en: 'xaxaxaxaxax '
-    },
-    createdAt: '2026-04-02T11:56:27.533Z'
   }
 ];
 

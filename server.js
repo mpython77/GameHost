@@ -333,11 +333,16 @@ app.post('/api/upload', uploadLimiter, upload.single('gameFile'), (req, res) => 
 // ─── API: List Games (faqat PUBLIC) ───
 app.get('/api/games', apiLimiter, (req, res) => {
   try {
-    // ?all=true — admin uchun (upload.html Manager)
     if (req.query.all === 'true') {
-      res.json(db.getAll());
+      // Admin uchun — tokenlarni sanitize qilib jo'natish
+      const all = db.getAll().map(g => ({
+        ...g,
+        privateToken: g.isPrivate ? g.privateToken : undefined
+      }));
+      res.json(all);
     } else {
-      res.json(db.getPublic());
+      // Public katalog — private o'yinlarni yashirish + tokenni olib tashlash
+      res.json(db.getPublic().map(({ privateToken, ...rest }) => rest));
     }
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -351,7 +356,9 @@ app.get('/api/games/private/:token', (req, res) => {
     if (!game) {
       return res.status(404).json({ error: 'Maxfiy o\'yin topilmadi yoki token noto\'g\'ri' });
     }
-    res.json(game);
+    // Token va ichki ma'lumotlarni yashirish
+    const { privateToken, ...safeGame } = game;
+    res.json(safeGame);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

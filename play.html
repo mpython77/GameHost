@@ -355,12 +355,16 @@
       }
 
       // Re-apply resolution on window resize
+      const _resizeRatioMap = { '16:9': 16/9, '9:16': 9/16, '4:3': 4/3, '3:4': 3/4, '1:1': 1, '21:9': 21/9 };
+      let _resizeTimer;
       window.addEventListener('resize', () => {
-        const activeBtn = document.querySelector('.res-btn.active');
-        if (activeBtn && activeBtn.dataset.ratio !== 'auto') {
-          const ratioMap = { '16:9': 16/9, '9:16': 9/16, '4:3': 4/3, '3:4': 3/4, '1:1': 1, '21:9': 21/9 };
-          applyResolution(activeBtn.dataset.ratio, ratioMap[activeBtn.dataset.ratio]);
-        }
+        clearTimeout(_resizeTimer);
+        _resizeTimer = setTimeout(() => {
+          const activeBtn = document.querySelector('.res-btn.active');
+          if (activeBtn && activeBtn.dataset.ratio !== 'auto') {
+            applyResolution(activeBtn.dataset.ratio, _resizeRatioMap[activeBtn.dataset.ratio]);
+          }
+        }, 100);
       });
 
       function toggleFullscreen() {

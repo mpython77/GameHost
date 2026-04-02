@@ -24,22 +24,24 @@
       "thumbnail": null,
       "category": "casual",
       "version": "1.0",
+      "isPrivate": true,
+      "privateToken": "b3bc00e9242cbefdd6ad57f0002e1325",
       "name": {
         "uz": "AppLovin",
-        "ru": "tes uchun bu ",
+        "ru": "AppLovin",
         "en": "AppLovin"
       },
       "description": {
-        "uz": "xaxaxaxaxax ",
-        "ru": "xaxaxaxaxax ",
-        "en": "xaxaxaxaxax "
+        "uz": "",
+        "ru": "",
+        "en": ""
       },
-      "createdAt": "2026-04-02T11:56:27.533Z"
+      "createdAt": "2026-04-02T12:29:19.443Z"
     }
   ],
   "meta": {
     "createdAt": "2026-04-02T11:56:27.531Z",
     "version": "2.0",
-    "updatedAt": "2026-04-02T11:56:27.533Z"
+    "updatedAt": "2026-04-02T12:29:19.443Z"
   }
 }
