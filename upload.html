@@ -864,6 +864,7 @@
     const Upload = (() => {
       let selectedFile = null;
       let uploadedGameId = null;
+      let uploadedPrivateLink = null;
 
       function init() {
         I18N.init();
@@ -1076,6 +1077,8 @@
         // Reset form inputs
         document.querySelectorAll('.form-input, .form-textarea').forEach(el => el.value = '');
         document.getElementById('progress-fill').style.width = '0%';
+        document.getElementById('isPrivate').checked = false;
+        uploadedPrivateLink = null;
       }
 
       // ─── Games Manager ───
