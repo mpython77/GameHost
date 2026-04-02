@@ -542,6 +542,15 @@
       background: rgba(239, 68, 68, 0.25);
     }
 
+    .manager-btn.download {
+      background: rgba(59, 130, 246, 0.12);
+      color: #3b82f6;
+    }
+
+    .manager-btn.download:hover {
+      background: rgba(59, 130, 246, 0.25);
+    }
+
     .manager-empty {
       text-align: center;
       padding: var(--space-xl);
@@ -1155,6 +1164,7 @@
               </div>
               <div class="manager-item-actions">
                 <a href="${playLink}" class="manager-btn play">▶ O'ynash</a>
+                <button class="manager-btn download" onclick="Upload.downloadGame('${game.id}')">📥 Yuklab olish</button>
                 <button class="manager-btn delete" onclick="Upload.deleteGame('${game.id}', '${name}')">🗑️ O'chirish</button>
               </div>
             </div>
@@ -1182,6 +1192,31 @@
         }
       }
 
+      // ─── Download Game ───
+      async function downloadGame(gameId) {
+        try {
+          const res = await fetch(`/api/games/${gameId}/download`, {
+            headers: { 'x-owner-token': getOwnerToken() }
+          });
+          if (!res.ok) {
+            const err = await res.json();
+            alert('Xatolik: ' + (err.error || 'Yuklab bo\'lmadi'));
+            return;
+          }
+          const blob = await res.blob();
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = `${gameId}.html`;
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          URL.revokeObjectURL(url);
+        } catch {
+          alert('Server bilan bog\'lanib bo\'lmadi');
+        }
+      }
+
       // ─── Utility ───
       function formatSize(bytes) {
         if (bytes < 1024) return bytes + ' B';
@@ -1189,7 +1224,7 @@
         return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
       }
 
-      return { init, deleteGame };
+      return { init, deleteGame, downloadGame };
     })();
 
     document.addEventListener('DOMContentLoaded', Upload.init);

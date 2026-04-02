@@ -383,6 +383,36 @@ app.get('/api/games/private/:token', (req, res) => {
   }
 });
 
+// ─── API: Download Game (faqat egasi yuklab oladi) ───
+app.get('/api/games/:id/download', (req, res) => {
+  try {
+    const gameId = req.params.id;
+    const ownerToken = req.headers['x-owner-token'] || req.query.owner;
+    const game = db.getById(gameId);
+
+    if (!game) {
+      return res.status(404).json({ error: "O'yin topilmadi" });
+    }
+
+    // Ownership tekshiruvi
+    if (game.ownerToken && game.ownerToken !== ownerToken) {
+      return res.status(403).json({ error: "Bu o'yinni faqat yuklagan odam yuklab olishi mumkin" });
+    }
+
+    const filePath = path.join(GAMES_DIR, game.folder, 'index.html');
+    if (!fs.existsSync(filePath)) {
+      return res.status(404).json({ error: "O'yin fayli topilmadi" });
+    }
+
+    const fileName = `${game.folder}.html`;
+    res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
+    res.setHeader('Content-Type', 'text/html');
+    res.sendFile(filePath);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // ─── API: Delete Game (faqat egasi o'chira oladi) ───
 app.delete('/api/games/:id', (req, res) => {
   try {
