@@ -822,6 +822,9 @@ ul, ol {
   flex: 1;
   position: relative;
   overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .player-iframe {
@@ -971,7 +974,8 @@ ul, ol {
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1),
+              height 0.4s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .iframe-container .player-iframe {
@@ -979,11 +983,11 @@ ul, ol {
   height: 100%;
   border: none;
   display: block;
-  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .iframe-container.resolution-active {
-  padding: 0;
+  /* Explicit width/height set by JS — centering is handled by parent flex */
+  margin: auto;
 }
 
 .iframe-container.resolution-active .player-iframe {
