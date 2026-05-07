@@ -291,6 +291,26 @@ const I18N = (() => {
       ru: '📋 Каталог',
       en: '📋 Catalog'
     },
+    'upload.thumbnail': {
+      uz: '🖼️ Muqova rasmi (ixtiyoriy)',
+      ru: '🖼️ Обложка (необязательно)',
+      en: '🖼️ Cover image (optional)'
+    },
+    'upload.thumbnailLabel': {
+      uz: 'Rasm tanlash yoki tashlang',
+      ru: 'Выберите или перетащите изображение',
+      en: 'Click to choose or drop image'
+    },
+    'upload.thumbnailHint': {
+      uz: 'JPG, PNG, WebP · max 5MB · tavsiya: 480×300px',
+      ru: 'JPG, PNG, WebP · макс 5МБ · рекомендуется: 480×300px',
+      en: 'JPG, PNG, WebP · max 5MB · recommended: 480×300px'
+    },
+    'upload.thumbnailClear': {
+      uz: "✕ O'chirish",
+      ru: '✕ Удалить',
+      en: '✕ Remove'
+    },
     'upload.noGames': {
       uz: "Hech qanday o'yin yuklanmagan",
       ru: 'Игры не загружены',

@@ -262,17 +262,26 @@ const apiLimiter = rateLimit({
   legacyHeaders: false
 });
 
-// ─── Multer config (HTML + ZIP) ───
+// ─── Multer config (HTML + ZIP + thumbnail) ───
 const upload = multer({
   dest: UPLOADS_DIR,
   limits: { fileSize: 100 * 1024 * 1024 },
   fileFilter: (req, file, cb) => {
     const ext = path.extname(file.originalname).toLowerCase();
-    const allowed = ['.html', '.zip'];
-    if (allowed.includes(ext) || file.mimetype === 'text/html' || file.mimetype === 'application/zip') {
-      cb(null, true);
+    if (file.fieldname === 'thumbnail') {
+      const allowed = ['.jpg', '.jpeg', '.png', '.webp', '.gif'];
+      if (allowed.includes(ext) || file.mimetype.startsWith('image/')) {
+        cb(null, true);
+      } else {
+        cb(new Error('Thumbnail uchun faqat rasm fayllari (JPG, PNG, WebP)'), false);
+      }
     } else {
-      cb(new Error('Faqat HTML yoki ZIP fayllar qabul qilinadi!'), false);
+      const allowed = ['.html', '.zip'];
+      if (allowed.includes(ext) || file.mimetype === 'text/html' || file.mimetype === 'application/zip') {
+        cb(null, true);
+      } else {
+        cb(new Error('Faqat HTML yoki ZIP fayllar qabul qilinadi!'), false);
+      }
     }
   }
 });
@@ -289,11 +298,20 @@ app.get('/api/health', (req, res) => {
 });
 
 // ─── API: Upload Game (admin only) ───
-app.post('/api/upload', uploadLimiter, adminAuth, upload.single('gameFile'), (req, res) => {
+app.post('/api/upload', uploadLimiter, adminAuth, upload.fields([
+  { name: 'gameFile', maxCount: 1 },
+  { name: 'thumbnail', maxCount: 1 }
+]), (req, res) => {
   try {
-    if (!req.file) {
+    const gameFile = req.files && req.files['gameFile'] && req.files['gameFile'][0];
+    const thumbnailFile = req.files && req.files['thumbnail'] && req.files['thumbnail'][0];
+
+    if (!gameFile) {
       return res.status(400).json({ error: 'Fayl yuklanmadi' });
     }
+
+    // req.file alias for compatibility below
+    req.file = gameFile;
 
     const { gameName_uz, gameName_ru, gameName_en,
             gameDesc_uz, gameDesc_ru, gameDesc_en,
@@ -382,6 +400,16 @@ app.post('/api/upload', uploadLimiter, adminAuth, upload.single('gameFile'), (re
     // Uploaded faylni tozalash
     if (fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
 
+    // ─── Thumbnail saqlash ───
+    let thumbnailName = null;
+    if (thumbnailFile) {
+      const thumbExt = path.extname(thumbnailFile.originalname).toLowerCase() || '.jpg';
+      thumbnailName = `thumbnail${thumbExt}`;
+      const thumbDest = path.join(gameDir, thumbnailName);
+      fs.copyFileSync(thumbnailFile.path, thumbDest);
+      try { fs.unlinkSync(thumbnailFile.path); } catch {}
+    }
+
     // Generate private token if private mode
     const privateMode = isPrivate === 'true' || isPrivate === '1' || isPrivate === 'on';
     const privateToken = privateMode ? crypto.randomBytes(16).toString('hex') : null;
@@ -390,7 +418,7 @@ app.post('/api/upload', uploadLimiter, adminAuth, upload.single('gameFile'), (re
     const gameConfig = {
       id: folderName,
       folder: folderName,
-      thumbnail: null,
+      thumbnail: thumbnailName,
       category: safeCategory,
       version: version || '1.0',
       isPrivate: privateMode,
@@ -429,6 +457,10 @@ app.post('/api/upload', uploadLimiter, adminAuth, upload.single('gameFile'), (re
     console.error('Upload xatosi:', err);
     if (req.file && fs.existsSync(req.file.path)) {
       try { fs.unlinkSync(req.file.path); } catch (e) { /* ignore */ }
+    }
+    const thumbFile = req.files && req.files['thumbnail'] && req.files['thumbnail'][0];
+    if (thumbFile && fs.existsSync(thumbFile.path)) {
+      try { fs.unlinkSync(thumbFile.path); } catch (e) { /* ignore */ }
     }
     res.status(500).json({ error: err.message || 'Server xatosi' });
   }

@@ -658,6 +658,67 @@
       color: var(--text-muted);
     }
 
+    /* ── Thumbnail Upload ── */
+    .thumb-upload-area {
+      display: flex;
+      align-items: center;
+      gap: var(--space-lg);
+      padding: var(--space-md) var(--space-lg);
+      background: var(--bg-glass);
+      border: 1px dashed var(--border-accent);
+      border-radius: var(--radius-lg);
+      cursor: pointer;
+      transition: var(--transition-base);
+    }
+    .thumb-upload-area:hover {
+      border-color: var(--accent-primary);
+      background: var(--bg-card-hover);
+    }
+    .thumb-preview {
+      width: 96px;
+      height: 60px;
+      border-radius: var(--radius-sm);
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-subtle);
+      overflow: hidden;
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 28px;
+      color: var(--text-muted);
+    }
+    .thumb-preview img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+    .thumb-upload-info {
+      flex: 1;
+    }
+    .thumb-upload-label {
+      font-size: var(--font-sm);
+      font-weight: 600;
+      color: var(--text-primary);
+      margin-bottom: 2px;
+    }
+    .thumb-upload-hint {
+      font-size: var(--font-xs);
+      color: var(--text-muted);
+    }
+    .thumb-clear-btn {
+      background: rgba(239,68,68,0.12);
+      color: #ef4444;
+      border: none;
+      border-radius: var(--radius-sm);
+      padding: 4px 10px;
+      font-size: var(--font-xs);
+      font-weight: 600;
+      cursor: pointer;
+      display: none;
+    }
+    .thumb-clear-btn.visible { display: inline-block; }
+
     /* Responsive */
     @media (max-width: 768px) {
       .upload-title { font-size: var(--font-3xl); }
@@ -940,6 +1001,20 @@
                 </label>
                 <textarea class="form-textarea" id="gameDesc_ru" placeholder="Краткое описание игры..."></textarea>
               </div>
+
+              <!-- Thumbnail -->
+              <div class="form-group full-width">
+                <label class="form-label" data-i18n="upload.thumbnail">🖼️ Muqova rasmi (ixtiyoriy)</label>
+                <div class="thumb-upload-area" id="thumb-upload-area">
+                  <div class="thumb-preview" id="thumb-preview">🖼️</div>
+                  <div class="thumb-upload-info">
+                    <div class="thumb-upload-label" data-i18n="upload.thumbnailLabel">Rasm tanlash yoki tashlang</div>
+                    <div class="thumb-upload-hint" data-i18n="upload.thumbnailHint">JPG, PNG, WebP · max 5MB · tavsiya: 480×300px</div>
+                  </div>
+                  <button type="button" class="thumb-clear-btn" id="thumb-clear-btn" data-i18n="upload.thumbnailClear">✕ O'chirish</button>
+                </div>
+                <input type="file" id="thumb-input" accept=".jpg,.jpeg,.png,.webp,.gif,image/*" style="display:none">
+              </div>
             </div>
           </div>
 
@@ -1049,8 +1124,56 @@
         });
 
         setupDropZone();
+        setupThumbnail();
         setupForm();
         loadGamesList();
+      }
+
+      // ─── Thumbnail Upload ───
+      let selectedThumbnail = null;
+
+      function setupThumbnail() {
+        const area = document.getElementById('thumb-upload-area');
+        const input = document.getElementById('thumb-input');
+        const preview = document.getElementById('thumb-preview');
+        const clearBtn = document.getElementById('thumb-clear-btn');
+
+        area.addEventListener('click', (e) => {
+          if (e.target === clearBtn) return;
+          input.click();
+        });
+
+        input.addEventListener('change', () => {
+          if (input.files.length > 0) selectThumbnail(input.files[0]);
+        });
+
+        area.addEventListener('dragover', (e) => { e.preventDefault(); area.style.borderColor = 'var(--accent-primary)'; });
+        area.addEventListener('dragleave', () => { area.style.borderColor = ''; });
+        area.addEventListener('drop', (e) => {
+          e.preventDefault();
+          area.style.borderColor = '';
+          const file = e.dataTransfer.files[0];
+          if (file && file.type.startsWith('image/')) selectThumbnail(file);
+        });
+
+        clearBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          selectedThumbnail = null;
+          input.value = '';
+          preview.innerHTML = '🖼️';
+          clearBtn.classList.remove('visible');
+        });
+      }
+
+      function selectThumbnail(file) {
+        if (file.size > 5 * 1024 * 1024) { alert('Rasm 5MB dan katta bo\'lmasligi kerak'); return; }
+        selectedThumbnail = file;
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          document.getElementById('thumb-preview').innerHTML = `<img src="${e.target.result}" alt="thumb">`;
+          document.getElementById('thumb-clear-btn').classList.add('visible');
+        };
+        reader.readAsDataURL(file);
       }
 
       // ─── Drop Zone ───
@@ -1163,6 +1286,7 @@
         formData.append('category', document.getElementById('category').value);
         formData.append('version', '1.0');
         formData.append('isPrivate', document.getElementById('isPrivate').checked ? 'true' : 'false');
+        if (selectedThumbnail) formData.append('thumbnail', selectedThumbnail);
 
         try {
           const xhr = new XMLHttpRequest();
@@ -1256,6 +1380,10 @@
         document.getElementById('progress-fill').style.width = '0%';
         document.getElementById('isPrivate').checked = false;
         uploadedPrivateLink = null;
+        selectedThumbnail = null;
+        document.getElementById('thumb-input').value = '';
+        document.getElementById('thumb-preview').innerHTML = '🖼️';
+        document.getElementById('thumb-clear-btn').classList.remove('visible');
       }
 
       // ─── Games Manager (admin — barcha o'yinlar) ───
