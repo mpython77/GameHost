@@ -227,17 +227,13 @@ app.use((req, res, next) => {
   next();
 });
 
-// Static: O'yin fayllari (data/games/ dan)
+// Static: O'yin fayllari (data/games/ dan) — cache o'chirilgan
 app.use('/games', express.static(GAMES_DIR, {
-  maxAge: NODE_ENV === 'production' ? '7d' : '0',
-  setHeaders: (res, filePath) => {
-    if (filePath.endsWith('.html')) {
-      res.setHeader('Cache-Control',
-        NODE_ENV === 'production'
-          ? 'public, max-age=604800'
-          : 'no-cache'
-      );
-    }
+  maxAge: 0,
+  setHeaders: (res) => {
+    res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
   }
 }));
 
