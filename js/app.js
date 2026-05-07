@@ -28,11 +28,7 @@ const App = (() => {
     try {
       const res = await fetch('/api/games');
       if (res.ok) {
-        const apiGames = await res.json();
-        if (apiGames.length > 0) {
-          // Global GAMES_CONFIG ni API dan yangilash
-          window.GAMES_CONFIG = apiGames;
-        }
+        window.GAMES_CONFIG = await res.json();
       }
     } catch {
       // API ishlamasa GAMES_CONFIG statik fayldan foydalanish
