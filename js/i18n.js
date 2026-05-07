@@ -302,9 +302,9 @@ const I18N = (() => {
       en: 'Click to choose or drop image'
     },
     'upload.thumbnailHint': {
-      uz: 'JPG, PNG, WebP · max 5MB · tavsiya: 480×300px',
-      ru: 'JPG, PNG, WebP · макс 5МБ · рекомендуется: 480×300px',
-      en: 'JPG, PNG, WebP · max 5MB · recommended: 480×300px'
+      uz: 'JPG, PNG, WebP · max 5MB · ideal o\'lcham: 480×300px',
+      ru: 'JPG, PNG, WebP · макс 5МБ · идеальный размер: 480×300px',
+      en: 'JPG, PNG, WebP · max 5MB · ideal size: 480×300px'
     },
     'upload.thumbnailClear': {
       uz: "✕ O'chirish",
