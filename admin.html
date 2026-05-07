@@ -609,6 +609,7 @@
     <div class="table-section">
       <div class="table-header">
         <div class="table-title">🎮 Barcha o'yinlar</div>
+        <button class="admin-btn danger" id="delete-all-btn" style="margin-left:auto;">🗑️ Delete All</button>
         <div class="table-search">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
           <input type="text" id="table-search" placeholder="Qidirish...">
@@ -761,6 +762,7 @@ const Admin = (() => {
     loadGames();
     loadStorage();
     setupTableControls();
+    document.getElementById('delete-all-btn').addEventListener('click', deleteAllGames);
     document.getElementById('logout-btn').addEventListener('click', logout);
   }
 
@@ -1017,6 +1019,23 @@ const Admin = (() => {
       W = canvas.width = window.innerWidth;
       H = canvas.height = window.innerHeight;
     });
+  }
+
+  // ── Delete All ──
+  async function deleteAllGames() {
+    const count = allGames.length;
+    if (count === 0) return toast("O'yinlar yo'q", 'error');
+    if (!confirm(`⚠️ BARCHA ${count} ta o'yinni o'chirasizmi? Bu amalni qaytarib bo'lmaydi!`)) return;
+    if (!confirm(`🔴 Tasdiqlang: ${count} ta o'yin, barcha fayllar va ma'lumotlar O'CHIRILADI!`)) return;
+    try {
+      const data = await api('DELETE', '/api/admin/games');
+      toast(`✅ ${data.deleted} ta o'yin o'chirildi`, 'success');
+      loadStats();
+      loadGames();
+      loadStorage();
+    } catch (err) {
+      toast(err.message, 'error');
+    }
   }
 
   // ── Storage ──

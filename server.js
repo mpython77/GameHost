@@ -717,6 +717,25 @@ app.get('/api/admin/games', adminAuth, (req, res) => {
   res.json(games);
 });
 
+// ─── API: Delete ALL games (format) ───
+app.delete('/api/admin/games', adminAuth, (req, res) => {
+  try {
+    const games = db.getAll();
+    let deleted = 0;
+    for (const game of games) {
+      const gameDir = path.join(GAMES_DIR, game.folder);
+      if (fs.existsSync(gameDir)) fs.rmSync(gameDir, { recursive: true, force: true });
+      deleted++;
+    }
+    db.data.games = [];
+    db._save();
+    console.log(`  🛡️  Admin: BARCHA o'yinlar o'chirildi (${deleted} ta)`);
+    res.json({ success: true, deleted });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // ─── API: Storage info ───
 app.get('/api/admin/storage', adminAuth, (req, res) => {
   function getDirSize(dirPath) {
