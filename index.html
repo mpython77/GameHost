@@ -34,15 +34,22 @@
                    placeholder="O'yinlarni qidirish...">
           </div>
 
-          <!-- Upload Button -->
-          <a href="upload.html" class="play-btn" id="upload-link" style="font-size: 0.8rem; padding: 7px 16px;">
+          <!-- Auth tugmalar — JS bilan boshqariladi -->
+          <a href="admin.html" class="admin-link" id="login-link" style="display:none;">
+            🔑 <span>Kirish</span>
+          </a>
+
+          <a href="upload.html" class="play-btn" id="upload-link" style="font-size: 0.8rem; padding: 7px 16px; display:none;">
             📤 <span class="upload-text" data-i18n="nav.upload">Yuklash</span>
           </a>
 
-          <!-- Admin Link -->
-          <a href="admin.html" class="admin-link" id="admin-link">
+          <a href="admin.html" class="admin-link" id="admin-link" style="display:none;">
             ⚙️ <span>Admin</span>
           </a>
+
+          <button class="admin-link" id="logout-link" style="display:none;border:none;cursor:pointer;background:rgba(239,68,68,0.1);color:#f87171;border-color:rgba(239,68,68,0.3);">
+            🚪 <span>Chiqish</span>
+          </button>
 
           <!-- Language Switcher -->
           <div class="lang-switcher" id="lang-switcher">
@@ -152,6 +159,32 @@
   <script src="js/i18n.js"></script>
   <script src="js/games-config.js"></script>
   <script src="js/app.js"></script>
+
+  <script>
+// Auth state — header tugmalarini boshqarish
+(async function() {
+  const token = sessionStorage.getItem('gamehost_admin_token');
+  let authed = false;
+  if (token) {
+    try {
+      const r = await fetch('/api/admin/stats', { headers: { 'x-admin-token': token } });
+      authed = r.ok;
+      if (!authed) sessionStorage.removeItem('gamehost_admin_token');
+    } catch {}
+  }
+  if (authed) {
+    document.getElementById('upload-link').style.display = '';
+    document.getElementById('admin-link').style.display = '';
+    document.getElementById('logout-link').style.display = '';
+    document.getElementById('logout-link').addEventListener('click', () => {
+      sessionStorage.removeItem('gamehost_admin_token');
+      location.reload();
+    });
+  } else {
+    document.getElementById('login-link').style.display = '';
+  }
+})();
+</script>
 
   <script>
 // Hero canvas particles

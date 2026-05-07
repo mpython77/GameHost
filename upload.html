@@ -1010,23 +1010,33 @@
       let uploadedGameId = null;
       let uploadedPrivateLink = null;
 
-      // ─── Qurilma egasi tokeni (per-device unique ID) ───
-      function getOwnerToken() {
-        const STORAGE_KEY = 'gamehost_owner_token';
-        let token = localStorage.getItem(STORAGE_KEY);
-        if (!token || token.length < 32) {
-          // Kriptografik xavfsiz 32 baytli token
-          const bytes = new Uint8Array(32);
-          crypto.getRandomValues(bytes);
-          token = Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('');
-          localStorage.setItem(STORAGE_KEY, token);
-        }
-        return token;
+      // ─── Admin token (faqat admin login dan keyin sessionStorage da) ───
+      function getAdminToken() {
+        return sessionStorage.getItem('gamehost_admin_token');
       }
 
-      function init() {
+      async function checkAuth() {
+        const token = getAdminToken();
+        if (!token) return false;
+        try {
+          const res = await fetch('/api/admin/stats', {
+            headers: { 'x-admin-token': token }
+          });
+          return res.ok;
+        } catch { return false; }
+      }
+
+      async function init() {
         I18N.init();
         I18N.applyTranslations();
+
+        // Login tekshiruvi — admin login bo'lmasa, admin sahifaga yuborish
+        const authed = await checkAuth();
+        if (!authed) {
+          sessionStorage.setItem('gamehost_redirect', 'upload.html');
+          window.location.href = 'admin.html';
+          return;
+        }
 
         // Lang switcher
         document.querySelectorAll('.lang-btn').forEach(btn => {
@@ -1165,7 +1175,7 @@
           const result = await new Promise((resolve, reject) => {
             xhr.open('POST', '/api/upload');
             // Qurilma egasi tokenini header orqali yuborish
-            xhr.setRequestHeader('x-owner-token', getOwnerToken());
+            xhr.setRequestHeader('x-admin-token', getAdminToken());
             xhr.onload = () => {
               try {
                 const data = JSON.parse(xhr.responseText);
@@ -1243,20 +1253,12 @@
         uploadedPrivateLink = null;
       }
 
-      // ─── Games Manager ───
+      // ─── Games Manager (admin — barcha o'yinlar) ───
       async function loadGamesList() {
         try {
-          const token = getOwnerToken();
-
-          // Avval egasiz o'yinlarni avtomatik claim qilish
-          await fetch('/api/games/claim', {
-            method: 'POST',
-            headers: { 'x-owner-token': token }
-          }).catch(() => {});
-
-          // ?mine=true + x-owner-token — faqat o'z o'yinlaringni ko'rsat
-          const res = await fetch('/api/games?mine=true', {
-            headers: { 'x-owner-token': token }
+          const token = getAdminToken();
+          const res = await fetch('/api/admin/games', {
+            headers: { 'x-admin-token': token }
           });
           const games = await res.json();
           renderGamesList(games);
@@ -1348,7 +1350,7 @@
         try {
           const res = await fetch(`/api/games/${gameId}`, {
             method: 'DELETE',
-            headers: { 'x-owner-token': getOwnerToken() }
+            headers: { 'x-admin-token': getAdminToken() }
           });
           const data = await res.json();
 
@@ -1366,7 +1368,7 @@
       async function downloadGame(gameId) {
         try {
           const res = await fetch(`/api/games/${gameId}/download`, {
-            headers: { 'x-owner-token': getOwnerToken() }
+            headers: { 'x-admin-token': getAdminToken() }
           });
           if (!res.ok) {
             const err = await res.json();
@@ -1395,11 +1397,11 @@
         const urlEl = document.getElementById('qr-modal-url');
         const dlBtn = document.getElementById('qr-download-btn');
 
-        const token = getOwnerToken();
+        const token = getAdminToken();
         title.textContent = `📱 ${gameName}`;
-        // x-owner-token header bilan so'rov — private o'yinlar uchun kerak
+        // x-admin-token header bilan so'rov — private o'yinlar uchun kerak
         const qrRes = await fetch(`/api/games/${gameId}/qr?size=300&t=${Date.now()}`, {
-          headers: { 'x-owner-token': token }
+          headers: { 'x-admin-token': token }
         });
         if (!qrRes.ok) {
           overlay.classList.add('visible');
@@ -1415,7 +1417,7 @@
         // QR download
         dlBtn.onclick = async () => {
           const res = await fetch(`/api/games/${gameId}/qr?size=600`, {
-            headers: { 'x-owner-token': token }
+            headers: { 'x-admin-token': token }
           });
           const blob = await res.blob();
           const url = URL.createObjectURL(blob);

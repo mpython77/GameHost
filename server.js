@@ -288,8 +288,8 @@ app.get('/api/health', (req, res) => {
   });
 });
 
-// ─── API: Upload Game ───
-app.post('/api/upload', uploadLimiter, upload.single('gameFile'), (req, res) => {
+// ─── API: Upload Game (admin only) ───
+app.post('/api/upload', uploadLimiter, adminAuth, upload.single('gameFile'), (req, res) => {
   try {
     if (!req.file) {
       return res.status(400).json({ error: 'Fayl yuklanmadi' });
@@ -298,12 +298,6 @@ app.post('/api/upload', uploadLimiter, upload.single('gameFile'), (req, res) => 
     const { gameName_uz, gameName_ru, gameName_en,
             gameDesc_uz, gameDesc_ru, gameDesc_en,
             category, version, isPrivate } = req.body;
-
-    // Qurilma egasi tokeni
-    const ownerToken = req.headers['x-owner-token'];
-    if (!ownerToken || ownerToken.length < 16) {
-      return res.status(400).json({ error: 'Qurilma identifikatori topilmadi. Sahifani yangilang.' });
-    }
 
     // Category validatsiya
     const ALLOWED_CATEGORIES = ['arcade', 'action', 'puzzle', 'casual', 'strategy'];
@@ -316,13 +310,6 @@ app.post('/api/upload', uploadLimiter, upload.single('gameFile'), (req, res) => 
       .replace(/^-|-$/g, '') || `game-${Date.now()}`;
 
     const gameDir = path.join(GAMES_DIR, folderName);
-
-    // Xuddi shu nomli o'yin boshqa foydalanuvchiga tegishli bo'lsa — rad etish
-    const existingGame = db.getById(folderName);
-    if (existingGame && existingGame.ownerToken && existingGame.ownerToken !== ownerToken) {
-      if (fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
-      return res.status(409).json({ error: `"${folderName}" nomli o'yin allaqachon boshqa foydalanuvchiga tegishli. Boshqa nom tanlang.` });
-    }
 
     if (fs.existsSync(gameDir)) {
       fs.rmSync(gameDir, { recursive: true, force: true });
@@ -408,7 +395,6 @@ app.post('/api/upload', uploadLimiter, upload.single('gameFile'), (req, res) => 
       version: version || '1.0',
       isPrivate: privateMode,
       privateToken: privateToken,
-      ownerToken: ownerToken,
       playCount: 0,
       lastPlayedAt: null,
       name: {
@@ -428,7 +414,7 @@ app.post('/api/upload', uploadLimiter, upload.single('gameFile'), (req, res) => 
     console.log(`  ✅  O'yin yuklandi: ${folderName}${privateMode ? ' (🔒 PRIVATE)' : ''}`);
 
     // Response dan maxfiy maydonlarni olib tashlash
-    const { ownerToken: _ot, privateToken: _pt, ...safeConfig } = gameConfig;
+    const { privateToken: _pt, ...safeConfig } = gameConfig;
 
     res.json({
       success: true,
@@ -478,12 +464,9 @@ app.get('/api/games/:id/qr', async (req, res) => {
     const game = db.getById(req.params.id);
     if (!game) return res.status(404).json({ error: "O'yin topilmadi" });
 
-    // Private o'yin uchun faqat egasi QR olishi mumkin
-    if (game.isPrivate) {
-      const ownerToken = req.headers['x-owner-token'] || req.query.owner;
-      if (!ownerToken || ownerToken !== game.ownerToken) {
-        return res.status(403).json({ error: "Maxfiy o'yin QR kodini faqat egasi olishi mumkin" });
-      }
+    // Private o'yin QR — faqat admin
+    if (game.isPrivate && !verifyAdminToken(req.headers['x-admin-token'])) {
+      return res.status(401).json({ error: "Maxfiy o'yin QR kodi uchun admin login kerak" });
     }
 
     // O'yin URL'ini aniqlash
@@ -521,22 +504,12 @@ app.get('/api/games/:id/qr', async (req, res) => {
 // ─── API: List Games ───
 app.get('/api/games', apiLimiter, (req, res) => {
   try {
-    if (req.query.mine === 'true') {
-      // Foydalanuvchining o'z o'yinlari (x-owner-token header bilan)
-      const ownerToken = req.headers['x-owner-token'];
-      if (!ownerToken) {
-        return res.json([]);
-      }
-      // ownerToken, privateToken, va ichki tokenlarni yashirish
-      const myGames = db.getByOwner(ownerToken).map(g => {
-        const { ownerToken: _ot, ...safe } = g;
-        return safe;
-      });
-      res.json(myGames);
-    } else {
-      // Public katalog — private o'yinlarni yashirish + barcha tokenlarni olib tashlash
-      res.json(db.getPublic().map(({ privateToken, ownerToken, ...rest }) => rest));
+    // Admin login bilan barcha o'yinlar (private + public)
+    if (req.query.all === 'true' && verifyAdminToken(req.headers['x-admin-token'])) {
+      return res.json(db.getAll().map(({ ownerToken, ...rest }) => rest));
     }
+    // Public katalog — faqat public o'yinlar, tokenlarsiz
+    res.json(db.getPublic().map(({ privateToken, ownerToken, ...rest }) => rest));
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -566,36 +539,14 @@ app.get('/api/games/private/:token', privateTokenLimiter, (req, res) => {
   }
 });
 
-// ─── API: Claim unclaimed games (egasiz o'yinlarni o'ziga olish) ───
-app.post('/api/games/claim', (req, res) => {
-  try {
-    const ownerToken = req.headers['x-owner-token'];
-    if (!ownerToken) {
-      return res.status(400).json({ error: 'Owner token kerak' });
-    }
-
-    const claimed = db.claimAll(ownerToken);
-    if (claimed > 0) console.log(`  📌  ${claimed} ta egasiz o'yin egalandi`);
-    res.json({ success: true, claimed });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// ─── API: Download Game (faqat egasi yuklab oladi) ───
-app.get('/api/games/:id/download', (req, res) => {
+// ─── API: Download Game (admin only) ───
+app.get('/api/games/:id/download', adminAuth, (req, res) => {
   try {
     const gameId = req.params.id;
-    const ownerToken = req.headers['x-owner-token'] || req.query.owner;
     const game = db.getById(gameId);
 
     if (!game) {
       return res.status(404).json({ error: "O'yin topilmadi" });
-    }
-
-    // Ownership tekshiruvi
-    if (game.ownerToken && game.ownerToken !== ownerToken) {
-      return res.status(403).json({ error: "Bu o'yinni faqat yuklagan odam yuklab olishi mumkin" });
     }
 
     const gameDir = path.join(GAMES_DIR, game.folder);
@@ -618,20 +569,14 @@ app.get('/api/games/:id/download', (req, res) => {
   }
 });
 
-// ─── API: Delete Game (faqat egasi o'chira oladi) ───
-app.delete('/api/games/:id', (req, res) => {
+// ─── API: Delete Game (admin only) ───
+app.delete('/api/games/:id', adminAuth, (req, res) => {
   try {
     const gameId = req.params.id;
-    const ownerToken = req.headers['x-owner-token'];
     const game = db.getById(gameId);
 
     if (!game) {
       return res.status(404).json({ error: "O'yin topilmadi" });
-    }
-
-    // Ownership tekshiruvi
-    if (game.ownerToken && game.ownerToken !== ownerToken) {
-      return res.status(403).json({ error: "Bu o'yinni faqat yuklagan odam o'chira oladi" });
     }
 
     // Delete game folder from disk

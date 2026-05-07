@@ -711,6 +711,13 @@ const Admin = (() => {
     try {
       const { token } = await api('POST', '/api/admin/login', { username, password });
       setToken(token);
+      // Agar boshqa sahifadan redirect qilingan bo'lsa, qaytaramiz
+      const redirect = sessionStorage.getItem('gamehost_redirect');
+      if (redirect) {
+        sessionStorage.removeItem('gamehost_redirect');
+        window.location.href = redirect;
+        return;
+      }
       showDashboard();
     } catch (err) {
       errEl.textContent = err.message;
