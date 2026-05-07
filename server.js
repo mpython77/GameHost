@@ -241,10 +241,16 @@ app.use('/games', express.static(GAMES_DIR, {
   }
 }));
 
-// Static: Platform UI fayllari
-app.use(express.static(__dirname, {
-  maxAge: NODE_ENV === 'production' ? '1d' : '0'
-}));
+// Static: Platform UI fayllari (faqat kerakli papkalar)
+const staticOpts = { maxAge: NODE_ENV === 'production' ? '1d' : '0' };
+app.use('/css', express.static(path.join(__dirname, 'css'), staticOpts));
+app.use('/js', express.static(path.join(__dirname, 'js'), staticOpts));
+app.use('/images', express.static(path.join(__dirname, 'images'), staticOpts));
+// HTML sahifalar
+['index.html', 'upload.html', 'play.html', 'admin.html'].forEach(page => {
+  app.get(`/${page}`, (req, res) => res.sendFile(path.join(__dirname, page)));
+});
+app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'index.html')));
 
 // ─── Rate Limiters ───
 const uploadLimiter = rateLimit({
