@@ -227,14 +227,47 @@ const App = (() => {
                 <span>v${escapeHTML(game.version || '1.0')}</span>
               </span>
             </div>
-            <button class="play-btn" onclick="event.stopPropagation(); App.navigateToGame('${escapeHTML(game.id)}')">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
-              ${I18N.t('card.play')}
-            </button>
+            <div class="card-actions">
+              <button class="play-btn" onclick="event.stopPropagation(); App.navigateToGame('${escapeHTML(game.id)}')">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+                ${I18N.t('card.play')}
+              </button>
+              <button class="share-btn" title="Share" onclick="event.stopPropagation(); App.shareGame('${escapeHTML(game.id)}', '${escapeHTML(name)}')">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+              </button>
+            </div>
           </div>
         </div>
       </article>
     `;
+  }
+
+  // ─── Share Game ───
+  function shareGame(gameId, gameName) {
+    const url = `${location.origin}/play.html?id=${gameId}`;
+    if (navigator.share) {
+      navigator.share({ title: gameName, url });
+    } else {
+      navigator.clipboard.writeText(url).then(() => {
+        showShareToast();
+      }).catch(() => {
+        prompt('Havolani nusxalang:', url);
+      });
+    }
+  }
+
+  function showShareToast() {
+    let toast = document.getElementById('share-toast');
+    if (!toast) {
+      toast = document.createElement('div');
+      toast.id = 'share-toast';
+      toast.style.cssText = 'position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:rgba(124,58,237,0.95);color:#fff;padding:10px 22px;border-radius:999px;font-size:14px;font-weight:600;z-index:9999;pointer-events:none;transition:opacity 0.3s;';
+      document.body.appendChild(toast);
+    }
+    toast.textContent = '🔗 Havola nusxalandi!';
+    toast.style.opacity = '1';
+    clearTimeout(toast._t);
+    toast._t = setTimeout(() => toast.style.opacity = '0', 2500);
   }
 
   // ─── Placeholder Thumbnail (SVG) ───
@@ -329,7 +362,8 @@ const App = (() => {
   // ─── Public API ───
   return {
     init,
-    navigateToGame
+    navigateToGame,
+    shareGame
   };
 })();
 

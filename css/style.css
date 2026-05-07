@@ -668,6 +668,34 @@ ul, ol {
   transform: translateY(-1px);
 }
 
+.card-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+}
+
+.share-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-full);
+  background: var(--bg-glass);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: var(--transition-fast);
+  flex-shrink: 0;
+}
+
+.share-btn:hover {
+  background: rgba(124, 58, 237, 0.15);
+  border-color: rgba(124, 58, 237, 0.4);
+  color: var(--accent-purple);
+  transform: translateY(-1px);
+}
+
 /* ---------- Empty State ---------- */
 .empty-state {
   text-align: center;
