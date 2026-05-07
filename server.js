@@ -432,6 +432,7 @@ app.post('/api/upload', uploadLimiter, adminAuth, upload.fields([
     const gameConfig = {
       id: folderName,
       folder: folderName,
+      uploadedAt: Date.now(),
       thumbnail: thumbnailName,
       category: safeCategory,
       version: version || '1.0',

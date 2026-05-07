@@ -295,7 +295,8 @@
       function loadGame() {
         const iframe = document.getElementById('game-iframe');
         const loading = document.getElementById('player-loading');
-        const gamePath = `games/${currentGame.folder}/index.html`;
+        const v = currentGame.uploadedAt || currentGame.createdAt || Date.now();
+        const gamePath = `games/${currentGame.folder}/index.html?v=${v}`;
 
         let playTracked = false;
 
