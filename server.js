@@ -486,6 +486,12 @@ app.post('/api/games/:id/play', playLimiter, (req, res) => {
     game.lastPlayedAt = new Date().toISOString();
     db._save();
 
+    const ip = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.socket.remoteAddress || 'unknown';
+    const ua = req.headers['user-agent'] || 'unknown';
+    const gameName = game.name?.uz || game.name?.en || game.id;
+    const time = new Date().toISOString();
+    console.log(`  🎮  [PLAY] ${time} | game: "${gameName}" (${game.id}) | ip: ${ip} | count: ${game.playCount} | ua: ${ua.slice(0, 80)}`);
+
     res.json({ success: true, playCount: game.playCount });
   } catch (err) {
     res.status(500).json({ error: err.message });
