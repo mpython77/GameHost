@@ -819,7 +819,7 @@
         <div class="header-right">
           <a href="index.html" class="back-btn">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m15 18-6-6 6-6"/></svg>
-            Katalogga
+            <span data-i18n="nav.backToCatalog">Katalogga</span>
           </a>
           <div class="lang-switcher">
             <button class="lang-btn active" data-lang="uz">UZ</button>
@@ -907,13 +907,13 @@
 
               <!-- Private Mode Toggle -->
               <div class="form-group">
-                <label class="form-label">🔒 Maxfiy rejim</label>
+                <label class="form-label" data-i18n="upload.privateMode">🔒 Maxfiy rejim</label>
                 <div class="private-toggle-wrapper">
                   <label class="toggle-switch" for="isPrivate">
                     <input type="checkbox" id="isPrivate">
                     <span class="toggle-slider"></span>
                   </label>
-                  <span class="private-hint" id="private-hint">
+                  <span class="private-hint" id="private-hint" data-i18n="upload.privateHint">
                     Katalogda ko'rinmaydi. Faqat maxfiy link orqali kirish mumkin.
                   </span>
                 </div>
@@ -954,7 +954,7 @@
               <div class="progress-bar">
                 <div class="progress-fill" id="progress-fill"></div>
               </div>
-              <div class="progress-text" id="progress-text">Yuklanmoqda...</div>
+              <div class="progress-text" id="progress-text" data-i18n="upload.uploading">Yuklanmoqda...</div>
             </div>
           </div>
         </div>
@@ -962,12 +962,12 @@
         <!-- ── Result ── -->
         <div class="upload-result" id="upload-result">
           <div class="result-icon" id="result-icon">✅</div>
-          <div class="result-title" id="result-title">Muvaffaqiyatli yuklandi!</div>
+          <div class="result-title" id="result-title" data-i18n="upload.success">Muvaffaqiyatli yuklandi!</div>
           <div class="result-text" id="result-text"></div>
           <div class="result-actions">
-            <button class="result-btn primary" id="result-play">🎮 O'ynash</button>
-            <button class="result-btn secondary" id="result-another">📤 Yana yuklash</button>
-            <a href="index.html" class="result-btn secondary">📋 Katalogga</a>
+            <button class="result-btn primary" id="result-play" data-i18n="upload.playBtn">🎮 O'ynash</button>
+            <button class="result-btn secondary" id="result-another" data-i18n="upload.anotherBtn">📤 Yana yuklash</button>
+            <a href="index.html" class="result-btn secondary" data-i18n="upload.toCatalog">📋 Katalogga</a>
           </div>
         </div>
 
@@ -988,12 +988,12 @@
   <div class="qr-modal-overlay" id="qr-modal-overlay" onclick="if(event.target===this) Upload.closeQR()">
     <div class="qr-modal">
       <h3 id="qr-modal-title">📱 QR Code</h3>
-      <p>Telefondan skanlab o'yinni oching</p>
+      <p data-i18n="qr.scan">Telefondan skanlab o'yinni oching</p>
       <img id="qr-modal-img" src="" alt="QR Code" width="250" height="250">
       <div class="qr-modal-url" id="qr-modal-url"></div>
       <div class="qr-modal-actions">
-        <button class="qr-close" onclick="Upload.closeQR()">Yopish</button>
-        <button class="qr-download" id="qr-download-btn">📥 QR yuklab olish</button>
+        <button class="qr-close" onclick="Upload.closeQR()" data-i18n="qr.close">Yopish</button>
+        <button class="qr-download" id="qr-download-btn" data-i18n="qr.download">📥 QR yuklab olish</button>
       </div>
     </div>
   </div>
@@ -1041,6 +1041,11 @@
         // Lang switcher
         document.querySelectorAll('.lang-btn').forEach(btn => {
           btn.addEventListener('click', () => I18N.setLang(btn.dataset.lang));
+        });
+
+        // Re-render dynamic content on language change
+        I18N.onChange(() => {
+          loadGamesList();
         });
 
         setupDropZone();
@@ -1093,7 +1098,7 @@
       function selectFile(file) {
         const ext = file.name.split('.').pop().toLowerCase();
         if (ext !== 'html' && ext !== 'zip') {
-          alert('Faqat HTML yoki ZIP fayllar qabul qilinadi!');
+          alert(I18N.t('upload.fileOnly'));
           return;
         }
 
@@ -1167,8 +1172,8 @@
             if (e.lengthComputable) {
               const pct = Math.round((e.loaded / e.total) * 100);
               document.getElementById('progress-fill').style.width = pct + '%';
-              document.getElementById('progress-text').textContent = 
-                pct < 100 ? `Yuklanmoqda... ${pct}%` : "O'rnatilmoqda...";
+              document.getElementById('progress-text').textContent =
+                pct < 100 ? `${I18N.t('upload.uploading')} ${pct}%` : I18N.t('upload.installing');
             }
           });
 
@@ -1182,13 +1187,13 @@
                 if (xhr.status === 200 && data.success) {
                   resolve(data);
                 } else {
-                  reject(new Error(data.error || 'Xatolik yuz berdi'));
+                  reject(new Error(data.error || I18N.t('upload.error')));
                 }
               } catch {
-                reject(new Error('Server javobini o\'qib bo\'lmadi'));
+                reject(new Error(I18N.t('upload.networkError')));
               }
             };
-            xhr.onerror = () => reject(new Error('Tarmoq xatosi'));
+            xhr.onerror = () => reject(new Error(I18N.t('upload.networkError')));
             xhr.send(formData);
           });
 
@@ -1213,8 +1218,8 @@
         result.classList.add('visible');
         document.getElementById('result-icon').textContent = success ? '✅' : '❌';
         document.getElementById('result-title').textContent = success
-          ? 'Muvaffaqiyatli yuklandi!'
-          : 'Xatolik yuz berdi';
+          ? I18N.t('upload.success')
+          : I18N.t('upload.error');
         document.getElementById('result-text').textContent = message;
         document.getElementById('result-text').className = 
           'result-text' + (success ? '' : ' result-error');
@@ -1230,7 +1235,7 @@
           document.getElementById('result-text').innerHTML = message +
             `<div class="private-link-box" style="margin-top: 12px;">
               🔒 <a href="${privateLink}">${fullLink}</a>
-              <button class="copy-btn" onclick="navigator.clipboard.writeText('${fullLink}'); this.textContent='✓ Nusxalandi'">Nusxalash</button>
+              <button class="copy-btn" onclick="navigator.clipboard.writeText('${fullLink}'); this.textContent=I18N.t('upload.copiedBtn')">${I18N.t('upload.copyBtn')}</button>
             </div>`;
         } else if (success) {
           document.getElementById('result-play').style.display = '';
@@ -1271,7 +1276,7 @@
         const list = document.getElementById('manager-list');
 
         if (games.length === 0) {
-          list.innerHTML = '<div class="manager-empty">Hech qanday o\'yin yuklanmagan</div>';
+          list.innerHTML = `<div class="manager-empty">${I18N.t('upload.noGames')}</div>`;
           return;
         }
 
@@ -1296,7 +1301,7 @@
           const privateBox = isPrivate && game.privateToken
             ? `<div class="private-link-box">
                  🔒 <a href="${playLink}" target="_blank">${esc(fullLink)}</a>
-                 <button class="copy-btn" data-copy="${esc(fullLink)}">Nusxalash</button>
+                 <button class="copy-btn" data-copy="${esc(fullLink)}">${I18N.t('upload.copyBtn')}</button>
                </div>`
             : '';
 
@@ -1311,16 +1316,16 @@
                   <span>${esc(game.folder)}/</span>
                 </div>
                 <div class="manager-item-stats">
-                  <span>▶️ ${game.playCount || 0} o'ynash</span>
+                  <span>▶️ ${game.playCount || 0} ${I18N.t('manager.plays')}</span>
                   <span>📅 ${game.createdAt ? new Date(game.createdAt).toLocaleDateString() : '—'}</span>
                 </div>
                 ${privateBox}
               </div>
               <div class="manager-item-actions">
-                <a href="${playLink}" class="manager-btn play">▶ O'ynash</a>
+                <a href="${playLink}" class="manager-btn play">${I18N.t('manager.play')}</a>
                 <button class="manager-btn qr" data-action="qr" data-id="${esc(game.id)}" data-name="${esc(name)}">📱 QR</button>
-                <button class="manager-btn download" data-action="download" data-id="${esc(game.id)}">📥 Yuklab olish</button>
-                <button class="manager-btn delete" data-action="delete" data-id="${esc(game.id)}" data-name="${esc(name)}">🗑️ O'chirish</button>
+                <button class="manager-btn download" data-action="download" data-id="${esc(game.id)}">${I18N.t('manager.download')}</button>
+                <button class="manager-btn delete" data-action="delete" data-id="${esc(game.id)}" data-name="${esc(name)}">${I18N.t('manager.delete')}</button>
               </div>
             </div>
           `;
@@ -1339,13 +1344,13 @@
           const copyBtn = e.target.closest('[data-copy]');
           if (copyBtn) {
             navigator.clipboard.writeText(copyBtn.dataset.copy)
-              .then(() => { copyBtn.textContent = '✓ Nusxalandi'; });
+              .then(() => { copyBtn.textContent = I18N.t('upload.copiedBtn'); });
           }
         }, { once: false });
       }
 
       async function deleteGame(gameId, gameName) {
-        if (!confirm(`"${gameName}" o'yinini o'chirishni xohlaysizmi?`)) return;
+        if (!confirm(`"${gameName}" ${I18N.t('upload.deleteConfirm')}`)) return;
 
         try {
           const res = await fetch(`/api/games/${gameId}`, {
@@ -1357,10 +1362,10 @@
           if (data.success) {
             loadGamesList();
           } else {
-            alert('Xatolik: ' + (data.error || 'Noma\'lum xatolik'));
+            alert(I18N.t('upload.deleteError') + ': ' + (data.error || ''));
           }
         } catch (err) {
-          alert('Server bilan bog\'lanib bo\'lmadi');
+          alert(I18N.t('upload.networkError'));
         }
       }
 
@@ -1372,7 +1377,7 @@
           });
           if (!res.ok) {
             const err = await res.json();
-            alert('Xatolik: ' + (err.error || 'Yuklab bo\'lmadi'));
+            alert(I18N.t('upload.downloadError') + ': ' + (err.error || ''));
             return;
           }
           const blob = await res.blob();
@@ -1385,7 +1390,7 @@
           document.body.removeChild(a);
           URL.revokeObjectURL(url);
         } catch {
-          alert('Server bilan bog\'lanib bo\'lmadi');
+          alert(I18N.t('upload.networkError'));
         }
       }
 
@@ -1406,7 +1411,7 @@
         if (!qrRes.ok) {
           overlay.classList.add('visible');
           img.src = '';
-          urlEl.textContent = 'QR olishda xatolik';
+          urlEl.textContent = I18N.t('qr.error');
           return;
         }
         const qrBlob = await qrRes.blob();

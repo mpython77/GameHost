@@ -253,7 +253,7 @@
           const res = await fetch(`/api/games/private/${token}`);
           if (!res.ok) {
             document.getElementById('player-loading').innerHTML = `
-              <div class="loading-text" style="color: #ef4444;">🔒 Maxfiy o'yin topilmadi yoki token noto'g'ri</div>
+              <div class="loading-text" style="color: #ef4444;">${I18N.t('player.notFound')}</div>
             `;
             return;
           }
@@ -265,7 +265,7 @@
           setupKeyboardShortcuts();
         } catch (err) {
           document.getElementById('player-loading').innerHTML = `
-            <div class="loading-text" style="color: #ef4444;">Server bilan bog'lanib bo'lmadi</div>
+            <div class="loading-text" style="color: #ef4444;">${I18N.t('player.networkError')}</div>
           `;
         }
       }
@@ -316,13 +316,13 @@
         });
 
         iframe.addEventListener('error', () => {
-          loading.innerHTML = `<div class="loading-text" style="color: #ef4444;">Xatolik: O'yin topilmadi!</div>`;
+          loading.innerHTML = `<div class="loading-text" style="color: #ef4444;">${I18N.t('player.gameError')}</div>`;
         });
 
         // Fallback: hide loading after 15s regardless
         setTimeout(() => {
           if (!loading.classList.contains('hidden')) {
-            loading.innerHTML = `<div class="loading-text" style="color: #fbbf24;">O'yin yuklanishi sekin... Dastur qotgan bo'lishi mumkin.</div>`;
+            loading.innerHTML = `<div class="loading-text" style="color: #fbbf24;">${I18N.t('player.loadSlow')}</div>`;
             setTimeout(() => loading.classList.add('hidden'), 5000);
           }
         }, 15000);

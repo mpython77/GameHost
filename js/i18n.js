@@ -184,6 +184,11 @@ const I18N = (() => {
       ru: 'Загрузить',
       en: 'Upload'
     },
+    'nav.backToCatalog': {
+      uz: 'Katalogga',
+      ru: 'Каталог',
+      en: 'Catalog'
+    },
 
     // Upload Page
     'upload.title': {
@@ -240,6 +245,162 @@ const I18N = (() => {
       uz: "Yuklangan o'yinlar",
       ru: 'Загруженные игры',
       en: 'Uploaded games'
+    },
+    'upload.privateMode': {
+      uz: '🔒 Maxfiy rejim',
+      ru: '🔒 Приватный режим',
+      en: '🔒 Private Mode'
+    },
+    'upload.privateHint': {
+      uz: "Katalogda ko'rinmaydi. Faqat maxfiy link orqali kirish mumkin.",
+      ru: 'Не отображается в каталоге. Доступ только по приватной ссылке.',
+      en: 'Not visible in catalog. Access only via private link.'
+    },
+    'upload.uploading': {
+      uz: 'Yuklanmoqda...',
+      ru: 'Загрузка...',
+      en: 'Uploading...'
+    },
+    'upload.installing': {
+      uz: "O'rnatilmoqda...",
+      ru: 'Установка...',
+      en: 'Installing...'
+    },
+    'upload.success': {
+      uz: 'Muvaffaqiyatli yuklandi!',
+      ru: 'Успешно загружено!',
+      en: 'Successfully uploaded!'
+    },
+    'upload.error': {
+      uz: 'Xatolik yuz berdi',
+      ru: 'Произошла ошибка',
+      en: 'Error occurred'
+    },
+    'upload.playBtn': {
+      uz: "🎮 O'ynash",
+      ru: '🎮 Играть',
+      en: '🎮 Play'
+    },
+    'upload.anotherBtn': {
+      uz: '📤 Yana yuklash',
+      ru: '📤 Загрузить ещё',
+      en: '📤 Upload another'
+    },
+    'upload.toCatalog': {
+      uz: '📋 Katalogga',
+      ru: '📋 Каталог',
+      en: '📋 Catalog'
+    },
+    'upload.noGames': {
+      uz: "Hech qanday o'yin yuklanmagan",
+      ru: 'Игры не загружены',
+      en: 'No games uploaded'
+    },
+    'upload.copyBtn': {
+      uz: 'Nusxalash',
+      ru: 'Копировать',
+      en: 'Copy'
+    },
+    'upload.copiedBtn': {
+      uz: '✓ Nusxalandi',
+      ru: '✓ Скопировано',
+      en: '✓ Copied'
+    },
+    'upload.playCount': {
+      uz: "o'ynash",
+      ru: 'игр',
+      en: 'plays'
+    },
+    'upload.fileOnly': {
+      uz: 'Faqat HTML yoki ZIP fayllar qabul qilinadi!',
+      ru: 'Принимаются только HTML или ZIP файлы!',
+      en: 'Only HTML or ZIP files are accepted!'
+    },
+    'upload.deleteConfirm': {
+      uz: "o'yinini o'chirishni xohlaysizmi?",
+      ru: 'игру удалить?',
+      en: 'delete this game?'
+    },
+    'upload.deleteError': {
+      uz: "O'chirishda xatolik",
+      ru: 'Ошибка удаления',
+      en: 'Delete error'
+    },
+    'upload.networkError': {
+      uz: "Server bilan bog'lanib bo'lmadi",
+      ru: 'Не удалось подключиться к серверу',
+      en: 'Could not connect to server'
+    },
+    'upload.downloadError': {
+      uz: "Yuklab bo'lmadi",
+      ru: 'Не удалось скачать',
+      en: 'Could not download'
+    },
+
+    // QR Modal
+    'qr.scan': {
+      uz: "Telefondan skanlab o'yinni oching",
+      ru: 'Отсканируйте телефоном, чтобы открыть игру',
+      en: 'Scan with phone to open the game'
+    },
+    'qr.close': {
+      uz: 'Yopish',
+      ru: 'Закрыть',
+      en: 'Close'
+    },
+    'qr.download': {
+      uz: '📥 QR yuklab olish',
+      ru: '📥 Скачать QR',
+      en: '📥 Download QR'
+    },
+    'qr.error': {
+      uz: 'QR olishda xatolik',
+      ru: 'Ошибка получения QR',
+      en: 'Error fetching QR'
+    },
+
+    // Manager buttons
+    'manager.play': {
+      uz: "▶ O'ynash",
+      ru: '▶ Играть',
+      en: '▶ Play'
+    },
+    'manager.delete': {
+      uz: "🗑️ O'chirish",
+      ru: '🗑️ Удалить',
+      en: '🗑️ Delete'
+    },
+    'manager.download': {
+      uz: '📥 Yuklab olish',
+      ru: '📥 Скачать',
+      en: '📥 Download'
+    },
+    'manager.plays': {
+      uz: "o'ynash",
+      ru: 'игр',
+      en: 'plays'
+    },
+
+    // Player error messages
+    'player.notFound': {
+      uz: "🔒 Maxfiy o'yin topilmadi yoki token noto'g'ri",
+      ru: '🔒 Приватная игра не найдена или токен неверен',
+      en: '🔒 Private game not found or token is invalid'
+    },
+    'player.networkError': {
+      uz: "Server bilan bog'lanib bo'lmadi",
+      ru: 'Не удалось подключиться к серверу',
+      en: 'Could not connect to server'
+    },
+    'player.loadSlow': {
+      uz: "O'yin yuklanishi sekin... Dastur qotgan bo'lishi mumkin.",
+      ru: 'Загрузка идёт медленно... Приложение может зависнуть.',
+      en: 'Game is loading slowly... The app may be frozen.'
+    },
+    'player.gameError': {
+      uz: "Xatolik: O'yin topilmadi!",
+      ru: 'Ошибка: Игра не найдена!',
+      en: 'Error: Game not found!'
     },
   };
 
