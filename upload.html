@@ -1126,6 +1126,7 @@
         setupDropZone();
         setupThumbnail();
         setupForm();
+        setupManagerListEvents();
         loadGamesList();
       }
 
@@ -1386,6 +1387,26 @@
         document.getElementById('thumb-clear-btn').classList.remove('visible');
       }
 
+      // ─── Manager List — bitta doimiy click listener ───
+      function setupManagerListEvents() {
+        const list = document.getElementById('manager-list');
+        list.addEventListener('click', (e) => {
+          const btn = e.target.closest('[data-action]');
+          if (btn) {
+            const { action, id, name: btnName } = btn.dataset;
+            if (action === 'qr') Upload.showQR(id, btnName);
+            else if (action === 'download') Upload.downloadGame(id);
+            else if (action === 'delete') Upload.deleteGame(id, btnName);
+            return;
+          }
+          const copyBtn = e.target.closest('[data-copy]');
+          if (copyBtn) {
+            navigator.clipboard.writeText(copyBtn.dataset.copy)
+              .then(() => { copyBtn.textContent = I18N.t('upload.copiedBtn'); });
+          }
+        });
+      }
+
       // ─── Games Manager (admin — barcha o'yinlar) ───
       async function loadGamesList() {
         try {
@@ -1459,22 +1480,6 @@
           `;
         }).join('');
 
-        // Event delegation — XSS-safe
-        list.addEventListener('click', (e) => {
-          const btn = e.target.closest('[data-action]');
-          if (btn) {
-            const { action, id, name: btnName } = btn.dataset;
-            if (action === 'qr') Upload.showQR(id, btnName);
-            else if (action === 'download') Upload.downloadGame(id);
-            else if (action === 'delete') Upload.deleteGame(id, btnName);
-            return;
-          }
-          const copyBtn = e.target.closest('[data-copy]');
-          if (copyBtn) {
-            navigator.clipboard.writeText(copyBtn.dataset.copy)
-              .then(() => { copyBtn.textContent = I18N.t('upload.copiedBtn'); });
-          }
-        }, { once: false });
       }
 
       async function deleteGame(gameId, gameName) {
