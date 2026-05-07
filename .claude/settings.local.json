@@ -3,7 +3,17 @@
     "allow": [
       "Bash(node -e ' *)",
       "Bash(node --check server.js)",
-      "Bash(node *)"
+      "Bash(node *)",
+      "Bash(git checkout *)",
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)",
+      "Bash(git push *)",
+      "Bash(powershell -Command \"\\(Get-Content upload.html -Raw\\) -replace 'getOwnerToken\\\\\\(\\\\\\)', 'getAdminToken\\(\\)' -replace 'x-owner-token', 'x-admin-token' | Set-Content upload.html -Encoding utf8\")",
+      "Bash(git commit *)",
+      "WebFetch(domain:docs.railway.com)",
+      "Bash(npm i *)",
+      "Bash(xargs grep -l -i \"unity\")",
+      "Bash(xargs wc -l)"
     ]
   }
 }

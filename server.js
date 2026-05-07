@@ -230,6 +230,15 @@ app.use((req, res, next) => {
   next();
 });
 
+// No-cache for ALL /api/* endpoints (proxy va browser keshini oldini olish)
+app.use('/api', (req, res, next) => {
+  res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate, max-age=0');
+  res.setHeader('Pragma', 'no-cache');
+  res.setHeader('Expires', '0');
+  res.setHeader('Surrogate-Control', 'no-store'); // Railway/CDN proxy uchun
+  next();
+});
+
 // Static: O'yin fayllari (data/games/ dan) — cache o'chirilgan
 app.use('/games', express.static(GAMES_DIR, {
   maxAge: 0,

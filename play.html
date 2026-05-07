@@ -175,7 +175,7 @@
 
   <!-- Scripts -->
   <script src="js/i18n.js"></script>
-  <script src="js/games-config.js"></script>
+  <script>window.GAMES_CONFIG = [];</script>
   <script>
     /* ============================================
        🎮 PLAYER PAGE LOGIC
@@ -216,7 +216,7 @@
 
         // API'dan o'yin ma'lumotlarini yuklash (production uchun muhim)
         try {
-          const res = await fetch('/api/games');
+          const res = await fetch('/api/games?_t=' + Date.now(), { cache: 'no-store' });
           if (res.ok) {
             const apiGames = await res.json();
             currentGame = apiGames.find(g => g.id === gameId);
@@ -250,7 +250,7 @@
 
       async function loadPrivateGame(token) {
         try {
-          const res = await fetch(`/api/games/private/${token}`);
+          const res = await fetch(`/api/games/private/${token}?_t=${Date.now()}`, { cache: 'no-store' });
           if (!res.ok) {
             document.getElementById('player-loading').innerHTML = `
               <div class="loading-text" style="color: #ef4444;">${I18N.t('player.notFound')}</div>

@@ -26,7 +26,7 @@ const App = (() => {
 
     // O'yinlarni API'dan yuklash (production uchun muhim)
     try {
-      const res = await fetch('/api/games');
+      const res = await fetch('/api/games?_t=' + Date.now(), { cache: 'no-store' });
       if (res.ok) {
         window.GAMES_CONFIG = await res.json();
       }
