@@ -240,7 +240,7 @@ const App = (() => {
 
   // ─── Share Game ───
   function shareGame(gameId, gameName) {
-    const url = `${location.origin}/play.html?id=${gameId}`;
+    const url = `${location.origin}/play.html?game=${gameId}`;
     if (navigator.share) {
       navigator.share({ title: gameName, url });
     } else {

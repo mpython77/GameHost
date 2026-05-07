@@ -90,7 +90,7 @@ const GAME_CATEGORIES = ['all', 'arcade', 'action', 'puzzle', 'casual', 'strateg
 
   getByOwner(ownerToken) {
     if (!ownerToken) return [];
-    return this.data.games.filter(g => g.ownerToken === ownerToken || !g.ownerToken);
+    return this.data.games.filter(g => g.ownerToken === ownerToken);
   }
 
   getUnclaimed() {
@@ -187,8 +187,11 @@ function migrateOldGames() {
         }
         if (Array.isArray(oldGames) && oldGames.length > 0) {
           for (const game of oldGames) {
-            db.add(game);
+            db.data.games = db.data.games.filter(g => g.id !== game.id);
+            game.createdAt = game.createdAt || new Date().toISOString();
+            db.data.games.push(game);
           }
+          db._save();
           console.log(`  📋  ${oldGames.length} ta o'yin bazaga import qilindi`);
         }
       }
@@ -239,7 +242,6 @@ app.use('/games', express.static(GAMES_DIR, {
 
 // Static: Platform UI fayllari (faqat kerakli papkalar)
 const staticOpts = { maxAge: NODE_ENV === 'production' ? '1d' : '0' };
-const noCacheOpts = { maxAge: 0, setHeaders: (res) => res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate') };
 app.use('/css', express.static(path.join(__dirname, 'css'), staticOpts));
 // games-config.js har doim yangi bo'lishi kerak
 app.get('/js/games-config.js', (req, res) => {
@@ -436,8 +438,8 @@ app.post('/api/upload', uploadLimiter, adminAuth, upload.fields([
       thumbnail: thumbnailName,
       category: safeCategory,
       version: version || '1.0',
-      isPrivate: privateMode,
-      privateToken: privateToken,
+      isPrivate: !!privateMode,
+      privateToken: privateToken || null,
       playCount: 0,
       lastPlayedAt: null,
       name: {
@@ -738,41 +740,35 @@ app.delete('/api/admin/games', adminAuth, (req, res) => {
 
 // ─── API: Storage info ───
 app.get('/api/admin/storage', adminAuth, (req, res) => {
-  function getDirSize(dirPath) {
-    if (!fs.existsSync(dirPath)) return 0;
+  const human = (size) => size < 1024 ? size + ' B'
+    : size < 1024 * 1024 ? (size / 1024).toFixed(1) + ' KB'
+    : (size / (1024 * 1024)).toFixed(1) + ' MB';
+
+  // Bir marta walk qiladi: hajm va tree birga hisoblanadi
+  function walk(dirPath) {
+    if (!fs.existsSync(dirPath)) return { size: 0, items: [] };
     let total = 0;
-    for (const entry of fs.readdirSync(dirPath, { withFileTypes: true })) {
+    const items = fs.readdirSync(dirPath, { withFileTypes: true }).map(entry => {
       const full = path.join(dirPath, entry.name);
-      if (entry.isDirectory()) total += getDirSize(full);
-      else total += fs.statSync(full).size;
-    }
-    return total;
-  }
-
-  function listDir(dirPath) {
-    if (!fs.existsSync(dirPath)) return [];
-    return fs.readdirSync(dirPath, { withFileTypes: true }).map(entry => {
-      const full = path.join(dirPath, entry.name);
-      const size = entry.isDirectory() ? getDirSize(full) : fs.statSync(full).size;
-      return {
-        name: entry.name,
-        type: entry.isDirectory() ? 'dir' : 'file',
-        size,
-        sizeHuman: size < 1024 ? size + ' B'
-          : size < 1024 * 1024 ? (size / 1024).toFixed(1) + ' KB'
-          : (size / (1024 * 1024)).toFixed(1) + ' MB',
-        ...(entry.isDirectory() && { children: listDir(full) })
-      };
+      if (entry.isDirectory()) {
+        const sub = walk(full);
+        total += sub.size;
+        return { name: entry.name, type: 'dir', size: sub.size, sizeHuman: human(sub.size), children: sub.items };
+      } else {
+        const size = fs.statSync(full).size;
+        total += size;
+        return { name: entry.name, type: 'file', size, sizeHuman: human(size) };
+      }
     });
+    return { size: total, items };
   }
 
-  const totalSize = getDirSize(DATA_DIR);
+  const result = walk(DATA_DIR);
   res.json({
     dataDir: DATA_DIR,
-    totalSize,
-    totalSizeHuman: totalSize < 1024 * 1024 ? (totalSize / 1024).toFixed(1) + ' KB'
-      : (totalSize / (1024 * 1024)).toFixed(1) + ' MB',
-    tree: listDir(DATA_DIR)
+    totalSize: result.size,
+    totalSizeHuman: human(result.size),
+    tree: result.items
   });
 });
 
@@ -782,9 +778,15 @@ app.delete('/api/admin/storage', adminAuth, (req, res) => {
   if (!target) return res.status(400).json({ error: 'target kerak' });
 
   const fullPath = path.resolve(target);
-  // Faqat DATA_DIR ichidagi narsalarni o'chirish mumkin
-  if (!fullPath.startsWith(path.resolve(DATA_DIR))) {
+  const resolvedDataDir = path.resolve(DATA_DIR);
+  // Faqat DATA_DIR ichidagi narsalarni o'chirish mumkin (path traversal himoyasi)
+  const rel = path.relative(resolvedDataDir, fullPath);
+  if (rel.startsWith('..') || path.isAbsolute(rel)) {
     return res.status(403).json({ error: "Faqat data papkasi ichidagi fayllarni o'chirish mumkin" });
+  }
+  // DATA_DIR ning o'zini o'chirishga ruxsat yo'q
+  if (fullPath === resolvedDataDir) {
+    return res.status(403).json({ error: "Asosiy papkani o'chirib bo'lmaydi" });
   }
   if (!fs.existsSync(fullPath)) return res.status(404).json({ error: 'Topilmadi' });
 
