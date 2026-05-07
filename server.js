@@ -10,7 +10,7 @@ const fs = require('fs');
 const crypto = require('crypto');
 const compression = require('compression');
 const helmet = require('helmet');
-const rateLimit = require('express-rate-limit');
+const { rateLimit, ipKeyGenerator } = require('express-rate-limit');
 const QRCode = require('qrcode');
 const AdmZip = require('adm-zip');
 
@@ -472,7 +472,7 @@ const playLimiter = rateLimit({
   max: 5,
   standardHeaders: true,
   legacyHeaders: false,
-  keyGenerator: (req) => `${req.ip}-${req.params.id}`
+  keyGenerator: (req, res) => `${ipKeyGenerator(req)}-${req.params.id}`
 });
 
 app.post('/api/games/:id/play', playLimiter, (req, res) => {
