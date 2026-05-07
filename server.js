@@ -696,6 +696,63 @@ app.get('/api/admin/games', adminAuth, (req, res) => {
   res.json(games);
 });
 
+// ─── API: Storage info ───
+app.get('/api/admin/storage', adminAuth, (req, res) => {
+  function getDirSize(dirPath) {
+    if (!fs.existsSync(dirPath)) return 0;
+    let total = 0;
+    for (const entry of fs.readdirSync(dirPath, { withFileTypes: true })) {
+      const full = path.join(dirPath, entry.name);
+      if (entry.isDirectory()) total += getDirSize(full);
+      else total += fs.statSync(full).size;
+    }
+    return total;
+  }
+
+  function listDir(dirPath) {
+    if (!fs.existsSync(dirPath)) return [];
+    return fs.readdirSync(dirPath, { withFileTypes: true }).map(entry => {
+      const full = path.join(dirPath, entry.name);
+      const size = entry.isDirectory() ? getDirSize(full) : fs.statSync(full).size;
+      return {
+        name: entry.name,
+        type: entry.isDirectory() ? 'dir' : 'file',
+        size,
+        sizeHuman: size < 1024 ? size + ' B'
+          : size < 1024 * 1024 ? (size / 1024).toFixed(1) + ' KB'
+          : (size / (1024 * 1024)).toFixed(1) + ' MB',
+        ...(entry.isDirectory() && { children: listDir(full) })
+      };
+    });
+  }
+
+  const totalSize = getDirSize(DATA_DIR);
+  res.json({
+    dataDir: DATA_DIR,
+    totalSize,
+    totalSizeHuman: totalSize < 1024 * 1024 ? (totalSize / 1024).toFixed(1) + ' KB'
+      : (totalSize / (1024 * 1024)).toFixed(1) + ' MB',
+    tree: listDir(DATA_DIR)
+  });
+});
+
+// ─── API: Delete any file/folder from storage ───
+app.delete('/api/admin/storage', adminAuth, (req, res) => {
+  const { target } = req.body;
+  if (!target) return res.status(400).json({ error: 'target kerak' });
+
+  const fullPath = path.resolve(target);
+  // Faqat DATA_DIR ichidagi narsalarni o'chirish mumkin
+  if (!fullPath.startsWith(path.resolve(DATA_DIR))) {
+    return res.status(403).json({ error: "Faqat data papkasi ichidagi fayllarni o'chirish mumkin" });
+  }
+  if (!fs.existsSync(fullPath)) return res.status(404).json({ error: 'Topilmadi' });
+
+  fs.rmSync(fullPath, { recursive: true, force: true });
+  console.log(`  🛡️  Admin: storage o'chirildi: ${fullPath}`);
+  res.json({ success: true });
+});
+
 app.delete('/api/admin/games/:id', adminAuth, (req, res) => {
   const game = db.getById(req.params.id);
   if (!game) return res.status(404).json({ error: "O'yin topilmadi" });

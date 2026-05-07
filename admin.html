@@ -484,6 +484,21 @@
     }
     .confirm-delete:hover { background: rgba(239,68,68,1); box-shadow: 0 0 20px rgba(239,68,68,0.4); }
 
+    /* Storage Manager */
+    .storage-info { display:flex; gap:var(--space-lg); align-items:center; margin-bottom:var(--space-lg); flex-wrap:wrap; }
+    .storage-total { font-size:var(--font-lg); font-weight:700; color:var(--accent-purple); }
+    .storage-path { font-size:var(--font-xs); color:var(--text-muted); font-family:monospace; background:var(--bg-secondary); padding:4px 10px; border-radius:var(--radius-sm); }
+    .storage-tree { font-family:monospace; font-size:var(--font-sm); }
+    .storage-row { display:flex; align-items:center; gap:var(--space-sm); padding:6px 0; border-bottom:1px solid var(--border-subtle); }
+    .storage-row:last-child { border-bottom:none; }
+    .storage-icon { font-size:16px; flex-shrink:0; }
+    .storage-name { flex:1; color:var(--text-primary); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .storage-name.dir { color:var(--accent-blue,#60a5fa); font-weight:600; }
+    .storage-size { color:var(--text-muted); font-size:var(--font-xs); white-space:nowrap; min-width:60px; text-align:right; }
+    .storage-del { background:rgba(239,68,68,0.12); border:none; color:#ef4444; border-radius:var(--radius-sm); padding:3px 10px; font-size:var(--font-xs); cursor:pointer; white-space:nowrap; }
+    .storage-del:hover { background:rgba(239,68,68,0.25); }
+    .storage-children { padding-left:20px; border-left:1px solid var(--border-subtle); margin-left:8px; }
+
     @media (max-width: 900px) {
       .games-table-row {
         grid-template-columns: 48px 1fr 80px 70px 120px;
@@ -625,6 +640,17 @@
       </div>
     </div>
 
+    <!-- Storage Manager -->
+    <div class="table-section" id="storage-section" style="margin-top:var(--space-xl);">
+      <div class="table-header">
+        <div class="table-title">💾 Storage Manager</div>
+        <button class="admin-btn" id="storage-refresh-btn" onclick="Admin.loadStorage()">🔄 Yangilash</button>
+      </div>
+      <div id="storage-body" style="padding:var(--space-lg);">
+        <div class="table-loading"><div class="loading-spinner"></div><div>Yuklanmoqda...</div></div>
+      </div>
+    </div>
+
   </main>
 </div>
 
@@ -733,6 +759,7 @@ const Admin = (() => {
     document.getElementById('admin-dashboard').classList.add('visible');
     loadStats();
     loadGames();
+    loadStorage();
     setupTableControls();
     document.getElementById('logout-btn').addEventListener('click', logout);
   }
@@ -992,7 +1019,53 @@ const Admin = (() => {
     });
   }
 
-  return { init };
+  // ── Storage ──
+  async function loadStorage() {
+    const el = document.getElementById('storage-body');
+    el.innerHTML = '<div class="table-loading"><div class="loading-spinner"></div><div>Yuklanmoqda...</div></div>';
+    try {
+      const data = await api('GET', '/api/admin/storage');
+      el.innerHTML = `
+        <div class="storage-info">
+          <span class="storage-total">💾 ${data.totalSizeHuman}</span>
+          <span class="storage-path">${esc(data.dataDir)}</span>
+        </div>
+        <div class="storage-tree">${renderTree(data.tree, data.dataDir)}</div>
+      `;
+    } catch (err) {
+      el.innerHTML = `<div style="color:#ef4444;padding:8px;">Xatolik: ${esc(err.message)}</div>`;
+    }
+  }
+
+  function renderTree(nodes, basePath) {
+    if (!nodes || nodes.length === 0) return '<div style="color:var(--text-muted);font-size:var(--font-xs);">Bo\'sh</div>';
+    return nodes.map(node => {
+      const fullPath = basePath + '/' + node.name;
+      const isDir = node.type === 'dir';
+      return `
+        <div class="storage-row">
+          <span class="storage-icon">${isDir ? '📁' : '📄'}</span>
+          <span class="storage-name ${isDir ? 'dir' : ''}">${esc(node.name)}</span>
+          <span class="storage-size">${node.sizeHuman}</span>
+          <button class="storage-del" onclick="Admin.deleteStorage('${esc(fullPath)}', '${esc(node.name)}')">🗑️ O'chir</button>
+        </div>
+        ${isDir && node.children && node.children.length ? `<div class="storage-children">${renderTree(node.children, fullPath)}</div>` : ''}
+      `;
+    }).join('');
+  }
+
+  async function deleteStorage(fullPath, name) {
+    if (!confirm(`"${name}" ni o'chirishni xohlaysizmi?`)) return;
+    try {
+      await api('DELETE', '/api/admin/storage', { target: fullPath });
+      toast(`"${name}" o'chirildi`, 'success');
+      loadStorage();
+    } catch (err) {
+      toast(err.message, 'error');
+    }
+  }
+
+  return { init, loadStorage, deleteStorage };
 })();
 
 document.addEventListener('DOMContentLoaded', Admin.init);
