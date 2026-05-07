@@ -1,0 +1,1455 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="description" content="O'yin yuklash — Game Host platformasi">
+  <title>📤 O'yin Yuklash — Game Host</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🎮</text></svg>">
+  <link rel="stylesheet" href="css/style.css">
+  <style>
+    /* ═══ Upload Page Custom Styles ═══ */
+    .upload-page {
+      min-height: 100vh;
+      padding-top: var(--header-height);
+    }
+
+    .upload-container {
+      max-width: 900px;
+      margin: 0 auto;
+      padding: var(--space-3xl) var(--space-lg);
+    }
+
+    .upload-title {
+      font-size: var(--font-4xl);
+      font-weight: 900;
+      text-align: center;
+      margin-bottom: var(--space-sm);
+      letter-spacing: -0.03em;
+    }
+
+    .upload-title .gradient {
+      background: var(--accent-gradient);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .upload-subtitle {
+      text-align: center;
+      color: var(--text-secondary);
+      font-size: var(--font-base);
+      margin-bottom: var(--space-3xl);
+    }
+
+    /* ── Drop Zone ── */
+    .drop-zone {
+      position: relative;
+      border: 2px dashed var(--border-accent);
+      border-radius: var(--radius-2xl);
+      padding: var(--space-4xl) var(--space-xl);
+      text-align: center;
+      background: var(--bg-card);
+      transition: var(--transition-base);
+      cursor: pointer;
+      margin-bottom: var(--space-xl);
+      overflow: hidden;
+    }
+
+    .drop-zone::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: var(--accent-gradient);
+      opacity: 0;
+      transition: opacity 0.3s;
+      pointer-events: none;
+    }
+
+    .drop-zone.dragging {
+      border-color: var(--accent-primary);
+      transform: scale(1.01);
+    }
+
+    .drop-zone.dragging::before {
+      opacity: 0.05;
+    }
+
+    .drop-zone:hover {
+      border-color: var(--accent-primary-light);
+      background: var(--bg-card-hover);
+    }
+
+    .drop-zone-icon {
+      font-size: 56px;
+      margin-bottom: var(--space-lg);
+      display: block;
+    }
+
+    .drop-zone-text {
+      font-size: var(--font-lg);
+      font-weight: 600;
+      color: var(--text-primary);
+      margin-bottom: var(--space-sm);
+    }
+
+    .drop-zone-hint {
+      font-size: var(--font-sm);
+      color: var(--text-muted);
+    }
+
+    .drop-zone-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: var(--space-sm);
+      padding: 12px 28px;
+      background: var(--accent-gradient);
+      border-radius: var(--radius-full);
+      color: white;
+      font-size: var(--font-base);
+      font-weight: 600;
+      margin-top: var(--space-lg);
+      transition: var(--transition-base);
+      cursor: pointer;
+      border: none;
+    }
+
+    .drop-zone-btn:hover {
+      box-shadow: var(--shadow-glow);
+      transform: translateY(-2px);
+    }
+
+    .file-input {
+      display: none;
+    }
+
+    /* Selected file info */
+    .file-info {
+      display: none;
+      align-items: center;
+      gap: var(--space-md);
+      padding: var(--space-md) var(--space-lg);
+      background: var(--bg-glass);
+      border: 1px solid var(--border-accent);
+      border-radius: var(--radius-lg);
+      margin-bottom: var(--space-xl);
+      animation: fadeInUp 0.3s ease;
+    }
+
+    .file-info.visible {
+      display: flex;
+    }
+
+    .file-info-icon {
+      font-size: 32px;
+    }
+
+    .file-info-details {
+      flex: 1;
+    }
+
+    .file-info-name {
+      font-weight: 600;
+      font-size: var(--font-base);
+    }
+
+    .file-info-size {
+      font-size: var(--font-xs);
+      color: var(--text-muted);
+    }
+
+    .file-info-remove {
+      width: 32px;
+      height: 32px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(239, 68, 68, 0.15);
+      color: #ef4444;
+      border-radius: var(--radius-sm);
+      font-size: 16px;
+      cursor: pointer;
+      border: none;
+      transition: var(--transition-fast);
+    }
+
+    .file-info-remove:hover {
+      background: rgba(239, 68, 68, 0.3);
+    }
+
+    /* ── Game Details Form ── */
+    .form-section {
+      display: none;
+      animation: fadeInUp 0.4s ease;
+    }
+
+    .form-section.visible {
+      display: block;
+    }
+
+    .form-section-title {
+      font-size: var(--font-xl);
+      font-weight: 700;
+      margin-bottom: var(--space-lg);
+      display: flex;
+      align-items: center;
+      gap: var(--space-sm);
+    }
+
+    .form-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: var(--space-md);
+    }
+
+    .form-group {
+      margin-bottom: var(--space-md);
+    }
+
+    .form-group.full-width {
+      grid-column: 1 / -1;
+    }
+
+    .form-label {
+      display: block;
+      font-size: var(--font-sm);
+      font-weight: 600;
+      color: var(--text-secondary);
+      margin-bottom: var(--space-xs);
+    }
+
+    .form-label .lang-tag {
+      display: inline-block;
+      padding: 1px 6px;
+      background: var(--bg-glass);
+      border: 1px solid var(--border-subtle);
+      border-radius: 4px;
+      font-size: 10px;
+      font-weight: 700;
+      color: var(--text-accent);
+      margin-left: 6px;
+      vertical-align: middle;
+    }
+
+    .form-input,
+    .form-select,
+    .form-textarea {
+      width: 100%;
+      padding: 12px 16px;
+      background: var(--bg-glass);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      color: var(--text-primary);
+      font-size: var(--font-sm);
+      font-family: var(--font-family);
+      transition: var(--transition-base);
+      outline: none;
+    }
+
+    .form-input:focus,
+    .form-select:focus,
+    .form-textarea:focus {
+      border-color: var(--accent-primary);
+      box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.15);
+    }
+
+    .form-input::placeholder,
+    .form-textarea::placeholder {
+      color: var(--text-muted);
+    }
+
+    .form-select {
+      cursor: pointer;
+      appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%238888a0' stroke-width='2'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 12px center;
+      padding-right: 36px;
+    }
+
+    .form-select option {
+      background: var(--bg-secondary);
+      color: var(--text-primary);
+    }
+
+    .form-textarea {
+      min-height: 80px;
+      resize: vertical;
+    }
+
+    /* ── Submit ── */
+    .submit-section {
+      display: none;
+      margin-top: var(--space-xl);
+      text-align: center;
+      animation: fadeInUp 0.4s ease;
+    }
+
+    .submit-section.visible {
+      display: block;
+    }
+
+    .submit-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: var(--space-sm);
+      padding: 14px 40px;
+      background: var(--accent-gradient);
+      border-radius: var(--radius-full);
+      color: white;
+      font-size: var(--font-lg);
+      font-weight: 700;
+      cursor: pointer;
+      border: none;
+      transition: var(--transition-base);
+      box-shadow: var(--shadow-glow-sm);
+    }
+
+    .submit-btn:hover {
+      box-shadow: var(--shadow-glow);
+      transform: translateY(-2px);
+    }
+
+    .submit-btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .submit-btn .spinner {
+      display: none;
+      width: 20px;
+      height: 20px;
+      border: 2px solid rgba(255,255,255,0.3);
+      border-top-color: white;
+      border-radius: 50%;
+      animation: spin 0.6s linear infinite;
+    }
+
+    .submit-btn.loading .spinner {
+      display: inline-block;
+    }
+
+    .submit-btn.loading .btn-text {
+      display: none;
+    }
+
+    /* ── Progress Bar ── */
+    .upload-progress {
+      display: none;
+      margin-top: var(--space-lg);
+    }
+
+    .upload-progress.visible {
+      display: block;
+    }
+
+    .progress-bar {
+      height: 6px;
+      background: var(--bg-glass);
+      border-radius: var(--radius-full);
+      overflow: hidden;
+      margin-bottom: var(--space-sm);
+    }
+
+    .progress-fill {
+      height: 100%;
+      background: var(--accent-gradient);
+      border-radius: var(--radius-full);
+      width: 0%;
+      transition: width 0.3s ease;
+    }
+
+    .progress-text {
+      font-size: var(--font-xs);
+      color: var(--text-muted);
+      text-align: center;
+    }
+
+    /* ── Result ── */
+    .upload-result {
+      display: none;
+      text-align: center;
+      padding: var(--space-3xl);
+      animation: fadeInUp 0.5s ease;
+    }
+
+    .upload-result.visible {
+      display: block;
+    }
+
+    .result-icon {
+      font-size: 64px;
+      margin-bottom: var(--space-lg);
+    }
+
+    .result-title {
+      font-size: var(--font-2xl);
+      font-weight: 700;
+      margin-bottom: var(--space-sm);
+    }
+
+    .result-text {
+      color: var(--text-secondary);
+      margin-bottom: var(--space-xl);
+    }
+
+    .result-actions {
+      display: flex;
+      gap: var(--space-md);
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+
+    .result-btn {
+      padding: 10px 24px;
+      border-radius: var(--radius-full);
+      font-size: var(--font-sm);
+      font-weight: 600;
+      cursor: pointer;
+      border: none;
+      transition: var(--transition-base);
+    }
+
+    .result-btn.primary {
+      background: var(--accent-gradient);
+      color: white;
+    }
+
+    .result-btn.primary:hover {
+      box-shadow: var(--shadow-glow-sm);
+    }
+
+    .result-btn.secondary {
+      background: var(--bg-glass);
+      border: 1px solid var(--border-subtle);
+      color: var(--text-secondary);
+    }
+
+    .result-btn.secondary:hover {
+      color: var(--text-primary);
+      border-color: var(--border-accent);
+    }
+
+    .result-error {
+      color: #ef4444;
+    }
+
+    /* ── Games Manager (below upload) ── */
+    .manager-section {
+      margin-top: var(--space-4xl);
+      border-top: 1px solid var(--border-subtle);
+      padding-top: var(--space-3xl);
+    }
+
+    .manager-title {
+      font-size: var(--font-2xl);
+      font-weight: 700;
+      margin-bottom: var(--space-lg);
+      display: flex;
+      align-items: center;
+      gap: var(--space-sm);
+    }
+
+    .manager-list {
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-md);
+    }
+
+    .manager-item {
+      display: flex;
+      align-items: center;
+      gap: var(--space-md);
+      padding: var(--space-md) var(--space-lg);
+      background: var(--bg-card);
+      border: 1px solid var(--border-card);
+      border-radius: var(--radius-lg);
+      transition: var(--transition-base);
+    }
+
+    .manager-item:hover {
+      border-color: var(--border-accent);
+      background: var(--bg-card-hover);
+    }
+
+    .manager-item-thumb {
+      width: 64px;
+      height: 40px;
+      background: var(--bg-secondary);
+      border-radius: var(--radius-sm);
+      overflow: hidden;
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+    }
+
+    .manager-item-thumb img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .manager-item-info {
+      flex: 1;
+    }
+
+    .manager-item-name {
+      font-weight: 600;
+      font-size: var(--font-base);
+    }
+
+    .manager-item-meta {
+      font-size: var(--font-xs);
+      color: var(--text-muted);
+      display: flex;
+      gap: var(--space-md);
+      margin-top: 2px;
+    }
+
+    .manager-item-actions {
+      display: flex;
+      gap: var(--space-sm);
+    }
+
+    .manager-btn {
+      padding: 6px 14px;
+      border-radius: var(--radius-full);
+      font-size: var(--font-xs);
+      font-weight: 600;
+      cursor: pointer;
+      border: none;
+      transition: var(--transition-fast);
+    }
+
+    .manager-btn.play {
+      background: rgba(124, 58, 237, 0.15);
+      color: var(--accent-primary-light);
+    }
+
+    .manager-btn.play:hover {
+      background: rgba(124, 58, 237, 0.3);
+    }
+
+    .manager-btn.delete {
+      background: rgba(239, 68, 68, 0.12);
+      color: #ef4444;
+    }
+
+    .manager-btn.delete:hover {
+      background: rgba(239, 68, 68, 0.25);
+    }
+
+    .manager-btn.download {
+      background: rgba(59, 130, 246, 0.12);
+      color: #3b82f6;
+    }
+
+    .manager-btn.download:hover {
+      background: rgba(59, 130, 246, 0.25);
+    }
+
+    .manager-btn.qr {
+      background: rgba(168, 85, 247, 0.12);
+      color: #a855f7;
+    }
+    .manager-btn.qr:hover {
+      background: rgba(168, 85, 247, 0.25);
+    }
+
+    .manager-item-stats {
+      display: flex;
+      gap: 12px;
+      margin-top: 4px;
+      font-size: 0.75rem;
+      color: var(--text-muted);
+    }
+    .manager-item-stats span {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    /* QR Modal */
+    .qr-modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.8);
+      backdrop-filter: blur(8px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 9999;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.3s ease;
+    }
+    .qr-modal-overlay.visible {
+      opacity: 1;
+      pointer-events: all;
+    }
+    .qr-modal {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-card);
+      border-radius: var(--radius-xl);
+      padding: 32px;
+      text-align: center;
+      max-width: 400px;
+      width: 90%;
+      animation: modalIn 0.3s ease;
+    }
+    @keyframes modalIn {
+      from { transform: scale(0.9); opacity: 0; }
+      to { transform: scale(1); opacity: 1; }
+    }
+    .qr-modal h3 {
+      color: var(--text-primary);
+      font-size: 1.1rem;
+      margin-bottom: 8px;
+    }
+    .qr-modal p {
+      color: var(--text-secondary);
+      font-size: 0.85rem;
+      margin-bottom: 16px;
+    }
+    .qr-modal img {
+      background: white;
+      border-radius: var(--radius-md);
+      padding: 16px;
+      margin-bottom: 16px;
+    }
+    .qr-modal-url {
+      font-size: 0.75rem;
+      color: var(--accent-primary-light);
+      word-break: break-all;
+      margin-bottom: 16px;
+      padding: 8px;
+      background: var(--bg-glass);
+      border-radius: var(--radius-sm);
+    }
+    .qr-modal-actions {
+      display: flex;
+      gap: 8px;
+      justify-content: center;
+    }
+    .qr-modal-actions button {
+      padding: 8px 16px;
+      border-radius: var(--radius-full);
+      border: none;
+      cursor: pointer;
+      font-size: 0.85rem;
+      font-weight: 500;
+      transition: all 0.2s;
+    }
+    .qr-modal-actions .qr-close {
+      background: var(--bg-glass);
+      color: var(--text-secondary);
+    }
+    .qr-modal-actions .qr-download {
+      background: var(--accent-gradient);
+      color: white;
+    }
+
+    .manager-empty {
+      text-align: center;
+      padding: var(--space-xl);
+      color: var(--text-muted);
+    }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+      .upload-title { font-size: var(--font-3xl); }
+      .form-grid { grid-template-columns: 1fr; }
+      .drop-zone { padding: var(--space-2xl) var(--space-md); }
+      .manager-item { flex-wrap: wrap; }
+      .manager-item-actions { flex-wrap: wrap; gap: 6px; }
+      .manager-btn { flex: 1 1 calc(50% - 6px); justify-content: center; display: flex; align-items: center; }
+    }
+
+    @media (max-width: 480px) {
+      .upload-container { padding: var(--space-xl) var(--space-md); }
+      .upload-title { font-size: var(--font-2xl); }
+      .drop-zone-icon { font-size: 40px; }
+      .drop-zone-text { font-size: var(--font-base); }
+      .manager-item-actions { width: 100%; }
+      .manager-btn { padding: 8px 10px; font-size: 11px; }
+      .result-actions { flex-direction: column; }
+      .result-btn { width: 100%; text-align: center; }
+      .submit-btn { width: 100%; justify-content: center; }
+      /* Lang-switcher upload sahifasida ko'rinadigan bo'lsin */
+      .header-right .lang-switcher { display: flex !important; }
+      .header-right .lang-btn { padding: 4px 8px; font-size: 10px; }
+      /* Upload link text yashirin */
+      .header-right a[href="upload.html"] span[data-i18n],
+      .header-right a.play-btn span[data-i18n] { display: none; }
+    }
+
+    /* ── Toggle Switch ── */
+    .private-toggle-wrapper {
+      display: flex;
+      align-items: center;
+      gap: var(--space-md);
+    }
+
+    .toggle-switch {
+      position: relative;
+      display: inline-block;
+      width: 48px;
+      height: 26px;
+      flex-shrink: 0;
+    }
+
+    .toggle-switch input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+
+    .toggle-slider {
+      position: absolute;
+      cursor: pointer;
+      inset: 0;
+      background: var(--bg-glass);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-full);
+      transition: var(--transition-base);
+    }
+
+    .toggle-slider::before {
+      content: '';
+      position: absolute;
+      height: 20px;
+      width: 20px;
+      left: 2px;
+      bottom: 2px;
+      background: var(--text-muted);
+      border-radius: 50%;
+      transition: var(--transition-base);
+    }
+
+    .toggle-switch input:checked + .toggle-slider {
+      background: var(--accent-primary);
+      border-color: var(--accent-primary);
+    }
+
+    .toggle-switch input:checked + .toggle-slider::before {
+      transform: translateX(22px);
+      background: white;
+    }
+
+    .private-hint {
+      font-size: var(--font-xs);
+      color: var(--text-muted);
+      line-height: 1.4;
+    }
+
+    /* ── Private Badge (Manager) ── */
+    .manager-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 3px;
+      padding: 2px 8px;
+      border-radius: var(--radius-full);
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.03em;
+    }
+
+    .manager-badge.public {
+      background: rgba(16, 185, 129, 0.15);
+      color: #34d399;
+    }
+
+    .manager-badge.private {
+      background: rgba(239, 68, 68, 0.15);
+      color: #f87171;
+    }
+
+    /* ── Private Link Box ── */
+    .private-link-box {
+      display: flex;
+      align-items: center;
+      gap: var(--space-sm);
+      margin-top: var(--space-sm);
+      padding: var(--space-sm) var(--space-md);
+      background: rgba(124, 58, 237, 0.08);
+      border: 1px solid var(--border-accent);
+      border-radius: var(--radius-sm);
+      font-size: var(--font-xs);
+      word-break: break-all;
+    }
+
+    .private-link-box a {
+      color: var(--accent-primary-light);
+      flex: 1;
+    }
+
+    .copy-btn {
+      padding: 4px 10px;
+      border-radius: var(--radius-full);
+      font-size: 10px;
+      font-weight: 700;
+      background: var(--accent-gradient);
+      color: white;
+      cursor: pointer;
+      border: none;
+      white-space: nowrap;
+      transition: var(--transition-fast);
+    }
+
+    .copy-btn:hover {
+      box-shadow: var(--shadow-glow-sm);
+    }
+  </style>
+</head>
+<body>
+  <div class="page-wrapper">
+
+    <!-- ═══════════════ HEADER ═══════════════ -->
+    <header class="header" id="header">
+      <div class="header-inner">
+        <div class="header-left">
+          <a href="index.html" class="logo">
+            <span class="logo-icon">🎮</span>
+            <span class="logo-text">GameHost</span>
+          </a>
+        </div>
+        <div class="header-right">
+          <a href="index.html" class="back-btn">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m15 18-6-6 6-6"/></svg>
+            Katalogga
+          </a>
+          <div class="lang-switcher">
+            <button class="lang-btn active" data-lang="uz">UZ</button>
+            <button class="lang-btn" data-lang="ru">RU</button>
+            <button class="lang-btn" data-lang="en">EN</button>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <!-- ═══════════════ MAIN ═══════════════ -->
+    <main class="upload-page">
+      <div class="upload-container">
+
+        <h1 class="upload-title">
+          📤 <span data-i18n="upload.title" class="gradient">O'yin Yuklash</span>
+        </h1>
+        <p class="upload-subtitle" data-i18n="upload.subtitle">
+          Cocos Creator web build ZIP faylini yuklang — avtomatik o'rnatiladi
+        </p>
+
+        <!-- ── Upload Form ── -->
+        <div id="upload-form">
+          <!-- Drop Zone -->
+          <div class="drop-zone" id="drop-zone">
+            <span class="drop-zone-icon">📦</span>
+            <div class="drop-zone-text" data-i18n="upload.dropText">HTML yoki ZIP faylini shu yerga tashlang</div>
+            <div class="drop-zone-hint" data-i18n="upload.dropHint">yoki tugmani bosib tanlang (max 100MB)</div>
+            <button class="drop-zone-btn" id="browse-btn" type="button">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+              <span data-i18n="upload.browseBtn">Faylni tanlash</span>
+            </button>
+            <input type="file" class="file-input" id="file-input" accept=".html,.zip">
+          </div>
+
+          <!-- File Info -->
+          <div class="file-info" id="file-info">
+            <span class="file-info-icon">📦</span>
+            <div class="file-info-details">
+              <div class="file-info-name" id="file-name">—</div>
+              <div class="file-info-size" id="file-size">—</div>
+            </div>
+            <button class="file-info-remove" id="file-remove" title="Olib tashlash">✕</button>
+          </div>
+
+          <!-- Game Details -->
+          <div class="form-section" id="form-section">
+            <h2 class="form-section-title">🎮 <span data-i18n="upload.details">O'yin ma'lumotlari</span></h2>
+            
+            <div class="form-grid">
+              <!-- Names -->
+              <div class="form-group">
+                <label class="form-label">
+                  <span data-i18n="upload.gameName">O'yin nomi</span>
+                  <span class="lang-tag">UZ</span>
+                </label>
+                <input class="form-input" type="text" id="gameName_uz" placeholder="Masalan: Qora Tuynuk" required>
+              </div>
+              <div class="form-group">
+                <label class="form-label">
+                  <span data-i18n="upload.gameName">O'yin nomi</span>
+                  <span class="lang-tag">EN</span>
+                </label>
+                <input class="form-input" type="text" id="gameName_en" placeholder="e.g. Black Hole">
+              </div>
+              <div class="form-group">
+                <label class="form-label">
+                  <span data-i18n="upload.gameName">O'yin nomi</span>
+                  <span class="lang-tag">RU</span>
+                </label>
+                <input class="form-input" type="text" id="gameName_ru" placeholder="напр. Чёрная Дыра">
+              </div>
+
+              <!-- Category & Version -->
+              <div class="form-group">
+                <label class="form-label" data-i18n="upload.category">Kategoriya</label>
+                <select class="form-select" id="category">
+                  <option value="arcade">Arcade</option>
+                  <option value="action">Action</option>
+                  <option value="puzzle">Puzzle</option>
+                  <option value="casual" selected>Casual</option>
+                  <option value="strategy">Strategy</option>
+                </select>
+              </div>
+
+              <!-- Private Mode Toggle -->
+              <div class="form-group">
+                <label class="form-label">🔒 Maxfiy rejim</label>
+                <div class="private-toggle-wrapper">
+                  <label class="toggle-switch" for="isPrivate">
+                    <input type="checkbox" id="isPrivate">
+                    <span class="toggle-slider"></span>
+                  </label>
+                  <span class="private-hint" id="private-hint">
+                    Katalogda ko'rinmaydi. Faqat maxfiy link orqali kirish mumkin.
+                  </span>
+                </div>
+              </div>
+              <!-- Descriptions -->
+              <div class="form-group full-width">
+                <label class="form-label">
+                  <span data-i18n="upload.description">Tavsif</span>
+                  <span class="lang-tag">UZ</span>
+                </label>
+                <textarea class="form-textarea" id="gameDesc_uz" placeholder="O'yin haqida qisqa tavsif..."></textarea>
+              </div>
+              <div class="form-group">
+                <label class="form-label">
+                  <span data-i18n="upload.description">Tavsif</span>
+                  <span class="lang-tag">EN</span>
+                </label>
+                <textarea class="form-textarea" id="gameDesc_en" placeholder="Short game description..."></textarea>
+              </div>
+              <div class="form-group">
+                <label class="form-label">
+                  <span data-i18n="upload.description">Tavsif</span>
+                  <span class="lang-tag">RU</span>
+                </label>
+                <textarea class="form-textarea" id="gameDesc_ru" placeholder="Краткое описание игры..."></textarea>
+              </div>
+            </div>
+          </div>
+
+          <!-- Submit -->
+          <div class="submit-section" id="submit-section">
+            <button class="submit-btn" id="submit-btn" type="button">
+              <span class="spinner"></span>
+              <span class="btn-text">🚀 <span data-i18n="upload.submitBtn">Yuklash</span></span>
+            </button>
+
+            <div class="upload-progress" id="upload-progress">
+              <div class="progress-bar">
+                <div class="progress-fill" id="progress-fill"></div>
+              </div>
+              <div class="progress-text" id="progress-text">Yuklanmoqda...</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ── Result ── -->
+        <div class="upload-result" id="upload-result">
+          <div class="result-icon" id="result-icon">✅</div>
+          <div class="result-title" id="result-title">Muvaffaqiyatli yuklandi!</div>
+          <div class="result-text" id="result-text"></div>
+          <div class="result-actions">
+            <button class="result-btn primary" id="result-play">🎮 O'ynash</button>
+            <button class="result-btn secondary" id="result-another">📤 Yana yuklash</button>
+            <a href="index.html" class="result-btn secondary">📋 Katalogga</a>
+          </div>
+        </div>
+
+        <!-- ═══════════════ GAMES MANAGER ═══════════════ -->
+        <div class="manager-section">
+          <h2 class="manager-title">📂 <span data-i18n="upload.manager">Yuklangan o'yinlar</span></h2>
+          <div class="manager-list" id="manager-list">
+            <!-- Rendered by JS -->
+          </div>
+        </div>
+
+      </div>
+    </main>
+
+  </div>
+
+  <!-- QR Code Modal -->
+  <div class="qr-modal-overlay" id="qr-modal-overlay" onclick="if(event.target===this) Upload.closeQR()">
+    <div class="qr-modal">
+      <h3 id="qr-modal-title">📱 QR Code</h3>
+      <p>Telefondan skanlab o'yinni oching</p>
+      <img id="qr-modal-img" src="" alt="QR Code" width="250" height="250">
+      <div class="qr-modal-url" id="qr-modal-url"></div>
+      <div class="qr-modal-actions">
+        <button class="qr-close" onclick="Upload.closeQR()">Yopish</button>
+        <button class="qr-download" id="qr-download-btn">📥 QR yuklab olish</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Scripts -->
+  <script src="js/i18n.js"></script>
+  <script src="js/games-config.js"></script>
+  <script>
+    /* ============================================
+       📤 UPLOAD PAGE LOGIC
+       ============================================ */
+    const Upload = (() => {
+      let selectedFile = null;
+      let uploadedGameId = null;
+      let uploadedPrivateLink = null;
+
+      // ─── Qurilma egasi tokeni (per-device unique ID) ───
+      function getOwnerToken() {
+        const STORAGE_KEY = 'gamehost_owner_token';
+        let token = localStorage.getItem(STORAGE_KEY);
+        if (!token || token.length < 32) {
+          // Kriptografik xavfsiz 32 baytli token
+          const bytes = new Uint8Array(32);
+          crypto.getRandomValues(bytes);
+          token = Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('');
+          localStorage.setItem(STORAGE_KEY, token);
+        }
+        return token;
+      }
+
+      function init() {
+        I18N.init();
+        I18N.applyTranslations();
+
+        // Lang switcher
+        document.querySelectorAll('.lang-btn').forEach(btn => {
+          btn.addEventListener('click', () => I18N.setLang(btn.dataset.lang));
+        });
+
+        setupDropZone();
+        setupForm();
+        loadGamesList();
+      }
+
+      // ─── Drop Zone ───
+      function setupDropZone() {
+        const zone = document.getElementById('drop-zone');
+        const input = document.getElementById('file-input');
+        const browseBtn = document.getElementById('browse-btn');
+
+        // Click to browse
+        browseBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          input.click();
+        });
+        zone.addEventListener('click', () => input.click());
+
+        // File selected via input
+        input.addEventListener('change', () => {
+          if (input.files.length > 0) {
+            selectFile(input.files[0]);
+          }
+        });
+
+        // Drag & Drop
+        zone.addEventListener('dragover', (e) => {
+          e.preventDefault();
+          zone.classList.add('dragging');
+        });
+
+        zone.addEventListener('dragleave', () => {
+          zone.classList.remove('dragging');
+        });
+
+        zone.addEventListener('drop', (e) => {
+          e.preventDefault();
+          zone.classList.remove('dragging');
+          if (e.dataTransfer.files.length > 0) {
+            selectFile(e.dataTransfer.files[0]);
+          }
+        });
+
+        // Remove file
+        document.getElementById('file-remove').addEventListener('click', clearFile);
+      }
+
+      function selectFile(file) {
+        const ext = file.name.split('.').pop().toLowerCase();
+        if (ext !== 'html' && ext !== 'zip') {
+          alert('Faqat HTML yoki ZIP fayllar qabul qilinadi!');
+          return;
+        }
+
+        selectedFile = file;
+
+        // Show file info
+        const icon = ext === 'zip' ? '📦' : '📄';
+        document.getElementById('file-name').textContent = `${icon} ${file.name}`;
+        document.getElementById('file-size').textContent = formatSize(file.size);
+        document.getElementById('file-info').classList.add('visible');
+        document.getElementById('drop-zone').style.display = 'none';
+
+        // Show form
+        document.getElementById('form-section').classList.add('visible');
+        document.getElementById('submit-section').classList.add('visible');
+
+        // Pre-fill name from filename
+        const baseName = file.name.replace(/\.(html|zip)$/i, '').replace(/[-_]/g, ' ');
+        document.getElementById('gameName_uz').value = baseName;
+        document.getElementById('gameName_en').value = baseName;
+      }
+
+      function clearFile() {
+        selectedFile = null;
+        document.getElementById('file-input').value = '';
+        document.getElementById('file-info').classList.remove('visible');
+        document.getElementById('drop-zone').style.display = '';
+        document.getElementById('form-section').classList.remove('visible');
+        document.getElementById('submit-section').classList.remove('visible');
+      }
+
+      // ─── Form Submit ───
+      function setupForm() {
+        document.getElementById('submit-btn').addEventListener('click', uploadGame);
+        document.getElementById('result-another').addEventListener('click', resetForm);
+        document.getElementById('result-play').addEventListener('click', () => {
+          if (uploadedGameId) {
+            window.location.href = `play.html?game=${uploadedGameId}`;
+          }
+        });
+      }
+
+      async function uploadGame() {
+        if (!selectedFile) return;
+
+        const btn = document.getElementById('submit-btn');
+        const progress = document.getElementById('upload-progress');
+
+        btn.classList.add('loading');
+        btn.disabled = true;
+        progress.classList.add('visible');
+
+        // Build form data
+        const formData = new FormData();
+        formData.append('gameFile', selectedFile);
+        formData.append('gameName_uz', document.getElementById('gameName_uz').value);
+        formData.append('gameName_en', document.getElementById('gameName_en').value);
+        formData.append('gameName_ru', document.getElementById('gameName_ru').value);
+        formData.append('gameDesc_uz', document.getElementById('gameDesc_uz').value);
+        formData.append('gameDesc_en', document.getElementById('gameDesc_en').value);
+        formData.append('gameDesc_ru', document.getElementById('gameDesc_ru').value);
+        formData.append('category', document.getElementById('category').value);
+        formData.append('version', '1.0');
+        formData.append('isPrivate', document.getElementById('isPrivate').checked ? 'true' : 'false');
+
+        try {
+          const xhr = new XMLHttpRequest();
+
+          // Progress tracking
+          xhr.upload.addEventListener('progress', (e) => {
+            if (e.lengthComputable) {
+              const pct = Math.round((e.loaded / e.total) * 100);
+              document.getElementById('progress-fill').style.width = pct + '%';
+              document.getElementById('progress-text').textContent = 
+                pct < 100 ? `Yuklanmoqda... ${pct}%` : "O'rnatilmoqda...";
+            }
+          });
+
+          const result = await new Promise((resolve, reject) => {
+            xhr.open('POST', '/api/upload');
+            // Qurilma egasi tokenini header orqali yuborish
+            xhr.setRequestHeader('x-owner-token', getOwnerToken());
+            xhr.onload = () => {
+              try {
+                const data = JSON.parse(xhr.responseText);
+                if (xhr.status === 200 && data.success) {
+                  resolve(data);
+                } else {
+                  reject(new Error(data.error || 'Xatolik yuz berdi'));
+                }
+              } catch {
+                reject(new Error('Server javobini o\'qib bo\'lmadi'));
+              }
+            };
+            xhr.onerror = () => reject(new Error('Tarmoq xatosi'));
+            xhr.send(formData);
+          });
+
+          // Success!
+          uploadedGameId = result.game.id;
+          uploadedPrivateLink = result.privateLink || null;
+          showResult(true, result.message, result.privateLink);
+          loadGamesList();
+
+        } catch (err) {
+          showResult(false, err.message);
+        } finally {
+          btn.classList.remove('loading');
+          btn.disabled = false;
+          progress.classList.remove('visible');
+        }
+      }
+
+      function showResult(success, message, privateLink) {
+        document.getElementById('upload-form').style.display = 'none';
+        const result = document.getElementById('upload-result');
+        result.classList.add('visible');
+        document.getElementById('result-icon').textContent = success ? '✅' : '❌';
+        document.getElementById('result-title').textContent = success
+          ? 'Muvaffaqiyatli yuklandi!'
+          : 'Xatolik yuz berdi';
+        document.getElementById('result-text').textContent = message;
+        document.getElementById('result-text').className = 
+          'result-text' + (success ? '' : ' result-error');
+
+        // Private link da play.html?token=xxx orqali o'ynash
+        if (success && privateLink) {
+          document.getElementById('result-play').onclick = () => {
+            window.location.href = privateLink;
+          };
+          document.getElementById('result-play').style.display = '';
+          // Private link ko'rsatish
+          const fullLink = window.location.origin + privateLink;
+          document.getElementById('result-text').innerHTML = message +
+            `<div class="private-link-box" style="margin-top: 12px;">
+              🔒 <a href="${privateLink}">${fullLink}</a>
+              <button class="copy-btn" onclick="navigator.clipboard.writeText('${fullLink}'); this.textContent='✓ Nusxalandi'">Nusxalash</button>
+            </div>`;
+        } else if (success) {
+          document.getElementById('result-play').style.display = '';
+          document.getElementById('result-play').onclick = () => {
+            window.location.href = `play.html?game=${uploadedGameId}`;
+          };
+        } else {
+          document.getElementById('result-play').style.display = 'none';
+        }
+      }
+
+      function resetForm() {
+        document.getElementById('upload-form').style.display = '';
+        document.getElementById('upload-result').classList.remove('visible');
+        clearFile();
+        // Reset form inputs
+        document.querySelectorAll('.form-input, .form-textarea').forEach(el => el.value = '');
+        document.getElementById('progress-fill').style.width = '0%';
+        document.getElementById('isPrivate').checked = false;
+        uploadedPrivateLink = null;
+      }
+
+      // ─── Games Manager ───
+      async function loadGamesList() {
+        try {
+          const token = getOwnerToken();
+
+          // Avval egasiz o'yinlarni avtomatik claim qilish
+          await fetch('/api/games/claim', {
+            method: 'POST',
+            headers: { 'x-owner-token': token }
+          }).catch(() => {});
+
+          // ?mine=true + x-owner-token — faqat o'z o'yinlaringni ko'rsat
+          const res = await fetch('/api/games?mine=true', {
+            headers: { 'x-owner-token': token }
+          });
+          const games = await res.json();
+          renderGamesList(games);
+        } catch {
+          renderGamesList([]);
+        }
+      }
+
+      function renderGamesList(games) {
+        const list = document.getElementById('manager-list');
+
+        if (games.length === 0) {
+          list.innerHTML = '<div class="manager-empty">Hech qanday o\'yin yuklanmagan</div>';
+          return;
+        }
+
+        const esc = str => String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+
+        list.innerHTML = games.map(game => {
+          const name = I18N ? I18N.localize(game.name) : (game.name.uz || game.name.en || game.id);
+          const category = game.category || 'casual';
+          const thumb = game.thumbnail
+            ? `<img src="games/${esc(game.folder)}/${esc(game.thumbnail)}" alt="${esc(name)}">`
+            : '🎮';
+          const isPrivate = game.isPrivate;
+          const badge = isPrivate
+            ? '<span class="manager-badge private">🔒 PRIVATE</span>'
+            : '<span class="manager-badge public">🌐 PUBLIC</span>';
+
+          const playLink = isPrivate && game.privateToken
+            ? `play.html?token=${esc(game.privateToken)}`
+            : `play.html?game=${esc(game.id)}`;
+
+          const fullLink = `${window.location.origin}/${playLink}`;
+          const privateBox = isPrivate && game.privateToken
+            ? `<div class="private-link-box">
+                 🔒 <a href="${playLink}" target="_blank">${esc(fullLink)}</a>
+                 <button class="copy-btn" data-copy="${esc(fullLink)}">Nusxalash</button>
+               </div>`
+            : '';
+
+          return `
+            <div class="manager-item" data-id="${esc(game.id)}">
+              <div class="manager-item-thumb">${thumb}</div>
+              <div class="manager-item-info">
+                <div class="manager-item-name">${esc(name)} ${badge}</div>
+                <div class="manager-item-meta">
+                  <span>${esc(category)}</span>
+                  <span>v${esc(game.version || '1.0')}</span>
+                  <span>${esc(game.folder)}/</span>
+                </div>
+                <div class="manager-item-stats">
+                  <span>▶️ ${game.playCount || 0} o'ynash</span>
+                  <span>📅 ${game.createdAt ? new Date(game.createdAt).toLocaleDateString() : '—'}</span>
+                </div>
+                ${privateBox}
+              </div>
+              <div class="manager-item-actions">
+                <a href="${playLink}" class="manager-btn play">▶ O'ynash</a>
+                <button class="manager-btn qr" data-action="qr" data-id="${esc(game.id)}" data-name="${esc(name)}">📱 QR</button>
+                <button class="manager-btn download" data-action="download" data-id="${esc(game.id)}">📥 Yuklab olish</button>
+                <button class="manager-btn delete" data-action="delete" data-id="${esc(game.id)}" data-name="${esc(name)}">🗑️ O'chirish</button>
+              </div>
+            </div>
+          `;
+        }).join('');
+
+        // Event delegation — XSS-safe
+        list.addEventListener('click', (e) => {
+          const btn = e.target.closest('[data-action]');
+          if (btn) {
+            const { action, id, name: btnName } = btn.dataset;
+            if (action === 'qr') Upload.showQR(id, btnName);
+            else if (action === 'download') Upload.downloadGame(id);
+            else if (action === 'delete') Upload.deleteGame(id, btnName);
+            return;
+          }
+          const copyBtn = e.target.closest('[data-copy]');
+          if (copyBtn) {
+            navigator.clipboard.writeText(copyBtn.dataset.copy)
+              .then(() => { copyBtn.textContent = '✓ Nusxalandi'; });
+          }
+        }, { once: false });
+      }
+
+      async function deleteGame(gameId, gameName) {
+        if (!confirm(`"${gameName}" o'yinini o'chirishni xohlaysizmi?`)) return;
+
+        try {
+          const res = await fetch(`/api/games/${gameId}`, {
+            method: 'DELETE',
+            headers: { 'x-owner-token': getOwnerToken() }
+          });
+          const data = await res.json();
+
+          if (data.success) {
+            loadGamesList();
+          } else {
+            alert('Xatolik: ' + (data.error || 'Noma\'lum xatolik'));
+          }
+        } catch (err) {
+          alert('Server bilan bog\'lanib bo\'lmadi');
+        }
+      }
+
+      // ─── Download Game ───
+      async function downloadGame(gameId) {
+        try {
+          const res = await fetch(`/api/games/${gameId}/download`, {
+            headers: { 'x-owner-token': getOwnerToken() }
+          });
+          if (!res.ok) {
+            const err = await res.json();
+            alert('Xatolik: ' + (err.error || 'Yuklab bo\'lmadi'));
+            return;
+          }
+          const blob = await res.blob();
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = `${gameId}.zip`;
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          URL.revokeObjectURL(url);
+        } catch {
+          alert('Server bilan bog\'lanib bo\'lmadi');
+        }
+      }
+
+      // ─── QR Code Modal ───
+      async function showQR(gameId, gameName) {
+        const overlay = document.getElementById('qr-modal-overlay');
+        const img = document.getElementById('qr-modal-img');
+        const title = document.getElementById('qr-modal-title');
+        const urlEl = document.getElementById('qr-modal-url');
+        const dlBtn = document.getElementById('qr-download-btn');
+
+        const token = getOwnerToken();
+        title.textContent = `📱 ${gameName}`;
+        // x-owner-token header bilan so'rov — private o'yinlar uchun kerak
+        const qrRes = await fetch(`/api/games/${gameId}/qr?size=300&t=${Date.now()}`, {
+          headers: { 'x-owner-token': token }
+        });
+        if (!qrRes.ok) {
+          overlay.classList.add('visible');
+          img.src = '';
+          urlEl.textContent = 'QR olishda xatolik';
+          return;
+        }
+        const qrBlob = await qrRes.blob();
+        img.src = URL.createObjectURL(qrBlob);
+        urlEl.textContent = `${window.location.origin}/play.html?game=${gameId}`;
+        overlay.classList.add('visible');
+
+        // QR download
+        dlBtn.onclick = async () => {
+          const res = await fetch(`/api/games/${gameId}/qr?size=600`, {
+            headers: { 'x-owner-token': token }
+          });
+          const blob = await res.blob();
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = `${gameId}-qr.png`;
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          URL.revokeObjectURL(url);
+        };
+      }
+
+      function closeQR() {
+        const overlay = document.getElementById('qr-modal-overlay');
+        overlay.classList.remove('visible');
+        const img = document.getElementById('qr-modal-img');
+        if (img.src && img.src.startsWith('blob:')) {
+          URL.revokeObjectURL(img.src);
+          img.src = '';
+        }
+      }
+
+      // ─── Utility ───
+      function formatSize(bytes) {
+        if (bytes < 1024) return bytes + ' B';
+        if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+        return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+      }
+
+      return { init, deleteGame, downloadGame, showQR, closeQR };
+    })();
+
+    document.addEventListener('DOMContentLoaded', Upload.init);
+  </script>
+</body>
+</html>

@@ -1,0 +1,30 @@
+{
+  "name": "game-host",
+  "version": "2.0.0",
+  "description": "Playable Ads Hosting Platform — Cocos Creator games",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "keywords": [
+    "playable-ads",
+    "cocos-creator",
+    "game-hosting"
+  ],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "adm-zip": "^0.5.17",
+    "compression": "^1.8.1",
+    "cors": "^2.8.6",
+    "express": "^5.2.1",
+    "express-rate-limit": "^8.3.1",
+    "helmet": "^8.1.0",
+    "multer": "^2.1.1",
+    "qrcode": "^1.5.4"
+  }
+}

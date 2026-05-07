@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="description" content="Cocos Creator o'yinlarini brauzerda o'ynang — bepul va tez. Play Cocos Creator games in your browser.">
+  <title>🎮 Game Host — Cocos Creator O'yinlar Platformasi</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🎮</text></svg>">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div class="page-wrapper">
+
+    <!-- ═══════════════ HEADER ═══════════════ -->
+    <header class="header" id="header">
+      <div class="header-inner">
+        <div class="header-left">
+          <a href="index.html" class="logo" id="logo">
+            <span class="logo-icon">🎮</span>
+            <span class="logo-text">GameHost</span>
+          </a>
+        </div>
+
+        <div class="header-right">
+          <!-- Search -->
+          <div class="search-box">
+            <svg class="search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+              <circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/>
+            </svg>
+            <input type="text"
+                   class="search-input"
+                   id="search-input"
+                   data-i18n="search.placeholder"
+                   placeholder="O'yinlarni qidirish...">
+          </div>
+
+          <!-- Upload Button -->
+          <a href="upload.html" class="play-btn" id="upload-link" style="font-size: 0.8rem; padding: 7px 16px;">
+            📤 <span class="upload-text" data-i18n="nav.upload">Yuklash</span>
+          </a>
+
+          <!-- Admin Link -->
+          <a href="admin.html" class="admin-link" id="admin-link">
+            ⚙️ <span>Admin</span>
+          </a>
+
+          <!-- Language Switcher -->
+          <div class="lang-switcher" id="lang-switcher">
+            <button class="lang-btn active" data-lang="uz" id="lang-uz">UZ</button>
+            <button class="lang-btn" data-lang="ru" id="lang-ru">RU</button>
+            <button class="lang-btn" data-lang="en" id="lang-en">EN</button>
+          </div>
+
+          <!-- Mobile Menu Button -->
+          <button class="mobile-menu-btn" id="mobile-menu-btn" aria-label="Menu">☰</button>
+        </div>
+      </div>
+    </header>
+
+    <!-- Mobile Menu -->
+    <div class="mobile-menu" id="mobile-menu">
+      <div class="search-box">
+        <svg class="search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+          <circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/>
+        </svg>
+        <input type="text"
+               class="search-input"
+               id="mobile-search-input"
+               data-i18n="search.placeholder"
+               placeholder="O'yinlarni qidirish...">
+      </div>
+      <div class="lang-switcher">
+        <button class="lang-btn active" data-lang="uz">UZ</button>
+        <button class="lang-btn" data-lang="ru">RU</button>
+        <button class="lang-btn" data-lang="en">EN</button>
+      </div>
+    </div>
+
+    <!-- ═══════════════ MAIN CONTENT ═══════════════ -->
+    <main class="main-content">
+
+      <!-- Hero Section -->
+      <section class="hero" id="hero">
+        <canvas id="hero-canvas"></canvas>
+        <div class="container">
+          <div class="hero-badge">
+            <span class="dot"></span>
+            <span data-i18n="hero.badge">🎮 O'yin Platformasi</span>
+          </div>
+
+          <h1 class="hero-title">
+            <span data-i18n="hero.title.line1">O'yinlarni</span><br>
+            <span class="gradient" data-i18n="hero.title.line2">O'ynang & Test Qiling</span>
+          </h1>
+
+          <p class="hero-subtitle" data-i18n="hero.subtitle">
+            Cocos Creator'da yaratilgan o'yinlarni brauzeringizda to'g'ridan-to'g'ri o'ynang. Hech narsa o'rnatish shart emas.
+          </p>
+
+          <div class="hero-stats">
+            <div class="hero-stat">
+              <div class="hero-stat-value" id="stat-games-count">0</div>
+              <div class="hero-stat-label" data-i18n="hero.stat.games">O'yinlar</div>
+            </div>
+            <div class="hero-stat">
+              <div class="hero-stat-value">100%</div>
+              <div class="hero-stat-label" data-i18n="hero.stat.free">Bepul</div>
+            </div>
+            <div class="hero-stat">
+              <div class="hero-stat-value">🌐</div>
+              <div class="hero-stat-label" data-i18n="hero.stat.browser">Brauzerda</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Games Catalog Section -->
+      <section class="section" id="catalog-section">
+        <div class="container">
+          <div class="section-header">
+            <h2 class="section-title" data-i18n="section.catalog">O'yinlar Katalogi</h2>
+            <div class="filter-tabs" id="filter-tabs">
+              <!-- Rendered by JS -->
+            </div>
+          </div>
+
+          <div class="games-grid" id="games-grid">
+            <!-- Rendered by JS -->
+          </div>
+        </div>
+      </section>
+
+    </main>
+
+    <!-- ═══════════════ FOOTER ═══════════════ -->
+    <footer class="footer">
+      <div class="container">
+        <div class="footer-inner">
+          <div class="footer-text">
+            © 2026 GameHost — <span data-i18n="footer.powered">Cocos Creator asosida</span>
+          </div>
+          <div class="footer-text">
+            <span data-i18n="footer.rights">Barcha huquqlar himoyalangan</span>
+          </div>
+        </div>
+      </div>
+    </footer>
+
+  </div>
+
+  <!-- Scripts -->
+  <script src="js/i18n.js"></script>
+  <script src="js/games-config.js"></script>
+  <script src="js/app.js"></script>
+
+  <script>
+// Hero canvas particles
+(function() {
+  const canvas = document.getElementById('hero-canvas');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  const hero = canvas.closest('.hero');
+
+  function resize() {
+    canvas.width = hero.offsetWidth;
+    canvas.height = hero.offsetHeight;
+  }
+  resize();
+  window.addEventListener('resize', resize);
+
+  const dots = Array.from({length: 50}, () => ({
+    x: Math.random() * canvas.width,
+    y: Math.random() * canvas.height,
+    vx: (Math.random() - 0.5) * 0.3,
+    vy: (Math.random() - 0.5) * 0.3,
+    r: Math.random() * 2 + 0.5
+  }));
+
+  function animate() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    dots.forEach(d => {
+      d.x += d.vx; d.y += d.vy;
+      if (d.x < 0 || d.x > canvas.width) d.vx *= -1;
+      if (d.y < 0 || d.y > canvas.height) d.vy *= -1;
+      ctx.beginPath();
+      ctx.arc(d.x, d.y, d.r, 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(124,58,237,0.4)';
+      ctx.fill();
+    });
+    for (let i = 0; i < dots.length; i++) {
+      for (let j = i+1; j < dots.length; j++) {
+        const dx = dots[i].x - dots[j].x;
+        const dy = dots[i].y - dots[j].y;
+        const d = Math.sqrt(dx*dx + dy*dy);
+        if (d < 100) {
+          ctx.beginPath();
+          ctx.moveTo(dots[i].x, dots[i].y);
+          ctx.lineTo(dots[j].x, dots[j].y);
+          ctx.strokeStyle = `rgba(124,58,237,${(1 - d/100) * 0.2})`;
+          ctx.lineWidth = 0.5;
+          ctx.stroke();
+        }
+      }
+    }
+    requestAnimationFrame(animate);
+  }
+  animate();
+
+  // 3D tilt on game cards
+  document.addEventListener('mousemove', (e) => {
+    document.querySelectorAll('.game-card').forEach(card => {
+      const rect = card.getBoundingClientRect();
+      const x = e.clientX - rect.left - rect.width / 2;
+      const y = e.clientY - rect.top - rect.height / 2;
+      const dist = Math.sqrt(x*x + y*y);
+      if (dist < 250) {
+        const tiltX = (y / rect.height) * 6;
+        const tiltY = -(x / rect.width) * 6;
+        card.style.transform = `perspective(1000px) rotateX(${tiltX}deg) rotateY(${tiltY}deg) translateY(-6px)`;
+      }
+    });
+  });
+  document.addEventListener('mouseleave', () => {
+    document.querySelectorAll('.game-card').forEach(card => {
+      card.style.transform = '';
+    });
+  });
+  document.querySelectorAll('.game-card').forEach(card => {
+    card.addEventListener('mouseleave', () => {
+      card.style.transform = '';
+    });
+  });
+})();
+  </script>
+</body>
+</html>

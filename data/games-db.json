@@ -1,0 +1,51 @@
+{
+  "games": [
+    {
+      "id": "unity",
+      "folder": "unity",
+      "thumbnail": null,
+      "category": "casual",
+      "version": "1.0",
+      "name": {
+        "uz": "Unity",
+        "ru": "Unity",
+        "en": "Unity"
+      },
+      "description": {
+        "uz": "",
+        "ru": "",
+        "en": ""
+      },
+      "createdAt": "2026-04-02T11:56:27.532Z",
+      "playCount": 1,
+      "lastPlayedAt": "2026-04-02T13:20:13.050Z",
+      "ownerToken": "43e02226ced73469cd8d8d0c51ab4aad8ef737d4ac4040b233d1ec50f1c7b548"
+    },
+    {
+      "id": "applovin",
+      "folder": "applovin",
+      "thumbnail": null,
+      "category": "casual",
+      "version": "1.0",
+      "isPrivate": true,
+      "privateToken": "b3bc00e9242cbefdd6ad57f0002e1325",
+      "name": {
+        "uz": "AppLovin",
+        "ru": "AppLovin",
+        "en": "AppLovin"
+      },
+      "description": {
+        "uz": "",
+        "ru": "",
+        "en": ""
+      },
+      "createdAt": "2026-04-02T12:29:19.443Z",
+      "ownerToken": "43e02226ced73469cd8d8d0c51ab4aad8ef737d4ac4040b233d1ec50f1c7b548"
+    }
+  ],
+  "meta": {
+    "createdAt": "2026-04-02T11:56:27.531Z",
+    "version": "2.0",
+    "updatedAt": "2026-04-02T13:32:47.098Z"
+  }
+}
