@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="description" content="Cocos Creator o'yinlarini brauzerda o'ynang — bepul va tez. Play Cocos Creator games in your browser.">
+  <title>🎮 Game Host — Cocos Creator O'yinlar Platformasi</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🎮</text></svg>">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div class="page-wrapper">
+
+    <header class="header" id="header">
+      <div class="header-inner">
+        <div class="header-left">
+          <a href="index.html" class="logo" id="logo">
+            <span class="logo-icon">🎮</span>
+            <span class="logo-text">GameHost</span>
+          </a>
+        </div>
+
+        <div class="header-right">
+          <div class="search-box">
+            <svg class="search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+              <circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/>
+            </svg>
+            <input type="text" class="search-input" id="search-input"
+                   data-i18n="search.placeholder" placeholder="O'yinlarni qidirish...">
+          </div>
+
+          <a href="admin.html" class="admin-link" id="login-link" style="display:none;">
+            🔑 <span>Kirish</span>
+          </a>
+
+          <a href="upload.html" class="play-btn" id="upload-link" style="font-size:0.8rem;padding:7px 16px;display:none;">
+            📤 <span class="upload-text" data-i18n="nav.upload">Yuklash</span>
+          </a>
+
+          <a href="admin.html" class="admin-link" id="admin-link" style="display:none;">
+            ⚙️ <span>Admin</span>
+          </a>
+
+          <button class="admin-link" id="logout-link" style="display:none;border:none;cursor:pointer;background:rgba(239,68,68,0.1);color:#f87171;border-color:rgba(239,68,68,0.3);">
+            🚪 <span>Chiqish</span>
+          </button>
+
+          <div class="lang-switcher" id="lang-switcher">
+            <button class="lang-btn active" data-lang="uz">UZ</button>
+            <button class="lang-btn" data-lang="ru">RU</button>
+            <button class="lang-btn" data-lang="en">EN</button>
+          </div>
+
+          <button class="mobile-menu-btn" id="mobile-menu-btn" aria-label="Menu">☰</button>
+        </div>
+      </div>
+    </header>
+
+    <div class="mobile-menu" id="mobile-menu">
+      <div class="search-box">
+        <svg class="search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+          <circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/>
+        </svg>
+        <input type="text" class="search-input" id="mobile-search-input"
+               data-i18n="search.placeholder" placeholder="O'yinlarni qidirish...">
+      </div>
+      <div class="lang-switcher">
+        <button class="lang-btn active" data-lang="uz">UZ</button>
+        <button class="lang-btn" data-lang="ru">RU</button>
+        <button class="lang-btn" data-lang="en">EN</button>
+      </div>
+    </div>
+
+    <main class="main-content">
+      <section class="hero" id="hero">
+        <canvas id="hero-canvas"></canvas>
+        <div class="container">
+          <div class="hero-badge">
+            <span class="dot"></span>
+            <span data-i18n="hero.badge">🎮 O'yin Platformasi</span>
+          </div>
+
+          <h1 class="hero-title">
+            <span data-i18n="hero.title.line1">O'yinlarni</span><br>
+            <span class="gradient" data-i18n="hero.title.line2">O'ynang & Test Qiling</span>
+          </h1>
+
+          <p class="hero-subtitle" data-i18n="hero.subtitle">
+            Cocos Creator'da yaratilgan o'yinlarni brauzeringizda to'g'ridan-to'g'ri o'ynang.
+          </p>
+
+          <div class="hero-stats">
+            <div class="hero-stat">
+              <div class="hero-stat-value" id="stat-games-count">0</div>
+              <div class="hero-stat-label" data-i18n="hero.stat.games">O'yinlar</div>
+            </div>
+            <div class="hero-stat">
+              <div class="hero-stat-value">100%</div>
+              <div class="hero-stat-label" data-i18n="hero.stat.free">Bepul</div>
+            </div>
+            <div class="hero-stat">
+              <div class="hero-stat-value">🌐</div>
+              <div class="hero-stat-label" data-i18n="hero.stat.browser">Brauzerda</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="section" id="catalog-section">
+        <div class="container">
+          <div class="section-header">
+            <h2 class="section-title" data-i18n="section.catalog">O'yinlar Katalogi</h2>
+            <div class="filter-tabs" id="filter-tabs"></div>
+          </div>
+
+          <div class="games-grid" id="games-grid"></div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="footer">
+      <div class="container">
+        <div class="footer-inner">
+          <div class="footer-text">
+            © 2026 GameHost — <span data-i18n="footer.powered">Cocos Creator asosida</span>
+          </div>
+          <div class="footer-text">
+            <span data-i18n="footer.rights">Barcha huquqlar himoyalangan</span>
+          </div>
+        </div>
+      </div>
+    </footer>
+
+  </div>
+
+  <!-- ── Bootstrap globals ── -->
+  <script>
+    window.GAMES_CONFIG = [];
+    window.GAME_CATEGORIES = ['all','arcade','action','puzzle','casual','strategy'];
+  </script>
+
+  <!-- ── Vendored data + i18n ── -->
+  <script src="js/games-config.js"></script>
+  <script src="js/i18n.js"></script>
+
+  <!-- ── Shared modules (load order matters) ── -->
+  <script src="js/lib/util.js"></script>
+  <script src="js/lib/escape.js"></script>
+  <script src="js/lib/toast.js"></script>
+  <script src="js/lib/auth.js"></script>
+  <script src="js/lib/api.js"></script>
+
+  <!-- ── Page ── -->
+  <script src="js/pages/home.js"></script>
+</body>
+</html>

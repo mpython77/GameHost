@@ -1,6 +1,21 @@
 node_modules/
 uploads/
-data/games-db.json
-data/games/
+data/
 *.log
 .env
+.env.local
+.env.*.local
+.DS_Store
+
+# Auto-generated frontend config (re-built by server on startup)
+public/js/games-config.js
+
+# Editor / OS
+.vscode/
+.idea/
+Thumbs.db
+
+# Build artifacts
+dist/
+build/
+coverage/

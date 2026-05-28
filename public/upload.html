@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="description" content="O'yin yuklash — Game Host platformasi">
+  <title>📤 O'yin Yuklash — Game Host</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🎮</text></svg>">
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="css/upload.css">
+</head>
+<body>
+  <div class="page-wrapper">
+
+    <header class="header" id="header">
+      <div class="header-inner">
+        <div class="header-left">
+          <a href="index.html" class="logo">
+            <span class="logo-icon">🎮</span>
+            <span class="logo-text">GameHost</span>
+          </a>
+        </div>
+        <div class="header-right">
+          <a href="index.html" class="back-btn">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m15 18-6-6 6-6"/></svg>
+            <span data-i18n="nav.backToCatalog">Katalogga</span>
+          </a>
+          <div class="lang-switcher">
+            <button class="lang-btn active" data-lang="uz">UZ</button>
+            <button class="lang-btn" data-lang="ru">RU</button>
+            <button class="lang-btn" data-lang="en">EN</button>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <main class="upload-page">
+      <div class="upload-container">
+
+        <h1 class="upload-title">📤 <span data-i18n="upload.title" class="gradient">O'yin Yuklash</span></h1>
+        <p class="upload-subtitle" data-i18n="upload.subtitle">
+          Cocos Creator web build ZIP faylini yuklang — avtomatik o'rnatiladi
+        </p>
+
+        <div id="upload-form">
+          <div class="drop-zone" id="drop-zone">
+            <span class="drop-zone-icon">📦</span>
+            <div class="drop-zone-text" data-i18n="upload.dropText">HTML yoki ZIP faylini shu yerga tashlang</div>
+            <div class="drop-zone-hint" data-i18n="upload.dropHint">yoki tugmani bosib tanlang (max 100MB)</div>
+            <button class="drop-zone-btn" id="browse-btn" type="button">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+              <span data-i18n="upload.browseBtn">Faylni tanlash</span>
+            </button>
+            <input type="file" class="file-input" id="file-input" accept=".html,.zip">
+          </div>
+
+          <div class="file-info" id="file-info">
+            <span class="file-info-icon">📦</span>
+            <div class="file-info-details">
+              <div class="file-info-name" id="file-name">—</div>
+              <div class="file-info-size" id="file-size">—</div>
+            </div>
+            <button class="file-info-remove" id="file-remove" title="Olib tashlash">✕</button>
+          </div>
+
+          <div class="form-section" id="form-section">
+            <h2 class="form-section-title">🎮 <span data-i18n="upload.details">O'yin ma'lumotlari</span></h2>
+
+            <div class="form-grid">
+              <div class="form-group">
+                <label class="form-label">
+                  <span data-i18n="upload.gameName">O'yin nomi</span>
+                  <span class="lang-tag">UZ</span>
+                </label>
+                <input class="form-input" type="text" id="gameName_uz" placeholder="Masalan: Qora Tuynuk" required>
+              </div>
+              <div class="form-group">
+                <label class="form-label">
+                  <span data-i18n="upload.gameName">O'yin nomi</span>
+                  <span class="lang-tag">EN</span>
+                </label>
+                <input class="form-input" type="text" id="gameName_en" placeholder="e.g. Black Hole">
+              </div>
+              <div class="form-group">
+                <label class="form-label">
+                  <span data-i18n="upload.gameName">O'yin nomi</span>
+                  <span class="lang-tag">RU</span>
+                </label>
+                <input class="form-input" type="text" id="gameName_ru" placeholder="напр. Чёрная Дыра">
+              </div>
+
+              <div class="form-group">
+                <label class="form-label" data-i18n="upload.category">Kategoriya</label>
+                <select class="form-select" id="category">
+                  <option value="arcade">Arcade</option>
+                  <option value="action">Action</option>
+                  <option value="puzzle">Puzzle</option>
+                  <option value="casual" selected>Casual</option>
+                  <option value="strategy">Strategy</option>
+                </select>
+              </div>
+
+              <div class="form-group">
+                <label class="form-label" data-i18n="upload.privateMode">🔒 Maxfiy rejim</label>
+                <div class="private-toggle-wrapper">
+                  <label class="toggle-switch" for="isPrivate">
+                    <input type="checkbox" id="isPrivate">
+                    <span class="toggle-slider"></span>
+                  </label>
+                  <span class="private-hint" id="private-hint" data-i18n="upload.privateHint">
+                    Katalogda ko'rinmaydi. Faqat maxfiy link orqali kirish mumkin.
+                  </span>
+                </div>
+              </div>
+
+              <div class="form-group full-width">
+                <label class="form-label">
+                  <span data-i18n="upload.description">Tavsif</span>
+                  <span class="lang-tag">UZ</span>
+                </label>
+                <textarea class="form-textarea" id="gameDesc_uz" placeholder="O'yin haqida qisqa tavsif..."></textarea>
+              </div>
+              <div class="form-group">
+                <label class="form-label">
+                  <span data-i18n="upload.description">Tavsif</span>
+                  <span class="lang-tag">EN</span>
+                </label>
+                <textarea class="form-textarea" id="gameDesc_en" placeholder="Short game description..."></textarea>
+              </div>
+              <div class="form-group">
+                <label class="form-label">
+                  <span data-i18n="upload.description">Tavsif</span>
+                  <span class="lang-tag">RU</span>
+                </label>
+                <textarea class="form-textarea" id="gameDesc_ru" placeholder="Краткое описание игры..."></textarea>
+              </div>
+            </div>
+          </div>
+
+          <div id="thumbnail-section" style="display:block; margin-top: var(--space-lg);">
+            <label class="form-label" data-i18n="upload.thumbnail">🖼️ Muqova rasmi (ixtiyoriy)</label>
+            <div class="thumb-upload-area" id="thumb-upload-area">
+              <div class="thumb-preview" id="thumb-preview">🖼️</div>
+              <div class="thumb-upload-info">
+                <div class="thumb-upload-label" data-i18n="upload.thumbnailLabel">Rasm tanlash yoki tashlang</div>
+                <div class="thumb-upload-hint" data-i18n="upload.thumbnailHint">JPG, PNG, WebP · max 5MB · ideal o'lcham: 480×300px</div>
+              </div>
+              <button type="button" class="thumb-clear-btn" id="thumb-clear-btn" data-i18n="upload.thumbnailClear">✕ O'chirish</button>
+            </div>
+            <input type="file" id="thumb-input" accept=".jpg,.jpeg,.png,.webp,.gif,image/*" style="display:none">
+          </div>
+
+          <div class="submit-section" id="submit-section">
+            <button class="submit-btn" id="submit-btn" type="button">
+              <span class="spinner"></span>
+              <span class="btn-text">🚀 <span data-i18n="upload.submitBtn">Yuklash</span></span>
+            </button>
+
+            <div class="upload-progress" id="upload-progress">
+              <div class="progress-bar">
+                <div class="progress-fill" id="progress-fill"></div>
+              </div>
+              <div class="progress-text" id="progress-text" data-i18n="upload.uploading">Yuklanmoqda...</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="upload-result" id="upload-result">
+          <div class="result-icon" id="result-icon">✅</div>
+          <div class="result-title" id="result-title" data-i18n="upload.success">Muvaffaqiyatli yuklandi!</div>
+          <div class="result-text" id="result-text"></div>
+          <div class="result-actions">
+            <button class="result-btn primary" id="result-play" data-i18n="upload.playBtn">🎮 O'ynash</button>
+            <button class="result-btn secondary" id="result-another" data-i18n="upload.anotherBtn">📤 Yana yuklash</button>
+            <a href="index.html" class="result-btn secondary" data-i18n="upload.toCatalog">📋 Katalogga</a>
+          </div>
+        </div>
+
+        <div class="manager-section">
+          <h2 class="manager-title">📂 <span data-i18n="upload.manager">Yuklangan o'yinlar</span></h2>
+          <div class="manager-list" id="manager-list"></div>
+        </div>
+
+      </div>
+    </main>
+
+  </div>
+
+  <div class="qr-modal-overlay" id="qr-modal-overlay">
+    <div class="qr-modal">
+      <h3 id="qr-modal-title">📱 QR Code</h3>
+      <p data-i18n="qr.scan">Telefondan skanlab o'yinni oching</p>
+      <img id="qr-modal-img" src="" alt="QR Code" width="250" height="250">
+      <div class="qr-modal-url" id="qr-modal-url"></div>
+      <div class="qr-modal-actions">
+        <button class="qr-close" data-i18n="qr.close">Yopish</button>
+        <button class="qr-download" id="qr-download-btn" data-i18n="qr.download">📥 QR yuklab olish</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/i18n.js"></script>
+  <script src="js/games-config.js"></script>
+  <script src="js/lib/util.js"></script>
+  <script src="js/lib/escape.js"></script>
+  <script src="js/lib/toast.js"></script>
+  <script src="js/lib/auth.js"></script>
+  <script src="js/lib/api.js"></script>
+  <script src="js/pages/upload.js"></script>
+</body>
+</html>
