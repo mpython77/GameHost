@@ -106,7 +106,7 @@
     },
 
     selectThumb(file) {
-      if (file.size > 5 * 1024 * 1024) { alert("Rasm 5MB dan katta bo'lmasligi kerak"); return; }
+      if (file.size > 5 * 1024 * 1024) { alert(I18N.t('upload.thumbnailMaxSize')); return; }
       this.selectedThumbnail = file;
       const reader = new FileReader();
       reader.onload = (e) => {

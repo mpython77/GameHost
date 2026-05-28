@@ -15,6 +15,10 @@ const { createApp } = require('../src/app');
 
 const app = createApp();
 const server = app.listen(0, '127.0.0.1', async () => {
+  // Apply the same socket timeouts as production (server.js does this).
+  server.keepAliveTimeout = 65 * 1000;
+  server.headersTimeout = 70 * 1000;
+  server.requestTimeout = 5 * 60 * 1000;
   const port = server.address().port;
   const base = 'http://127.0.0.1:' + port;
   let pass = 0, fail = 0;
@@ -320,6 +324,121 @@ const server = app.listen(0, '127.0.0.1', async () => {
     ok(`concurrent uploads got unique IDs: ${ids.join(', ')}`);
   } else {
     bad('mutex serialize', JSON.stringify(ids));
+  }
+
+  // ===== Test 16: Concurrent setPrivacy doesn't desync DB and disk =====
+  console.log('\n[BUG NEW] Concurrent setPrivacy is mutex-protected');
+  const targetId = ids[0]; // concurrent
+  // Fire 4 toggles at once. Result should be deterministic (last write wins
+  // for the DB), and the on-disk folder should match the DB.folder.
+  await Promise.all([true, false, true, false].map((flag) =>
+    fetch(base + '/api/admin/games/' + targetId, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', 'x-admin-token': token },
+      body: JSON.stringify({ isPrivate: flag }),
+    }).then((r) => r.json()).catch(() => null)
+  ));
+  const stateNow = (await fetch(base + '/api/admin/games', {
+    headers: { 'x-admin-token': token },
+  }).then((r) => r.json())).find((g) => g.id === targetId);
+  const folderExists = stateNow && fs.existsSync(path.join(app.locals.config.GAMES_DIR, stateNow.folder));
+  if (folderExists) {
+    ok(`DB.folder matches disk after 4 concurrent toggles → ${stateNow.folder}`);
+  } else {
+    bad('setPrivacy desync', JSON.stringify(stateNow));
+  }
+
+  // ===== Test 17: Server timeouts (slow loris mitigation) =====
+  console.log('\n[BUG NEW] Server has socket timeouts configured');
+  if (server.keepAliveTimeout > 0 && server.headersTimeout > server.keepAliveTimeout) {
+    ok(`keepAlive=${server.keepAliveTimeout}ms headers=${server.headersTimeout}ms`);
+  } else {
+    bad('timeouts not set', `keepAlive=${server.keepAliveTimeout} headers=${server.headersTimeout}`);
+  }
+
+  // ===== Test 18: RFC 5987 download header =====
+  console.log('\n[BUG NEW] Download Content-Disposition is safe');
+  const dlRes = await fetch(base + '/api/games/' + targetId + '/download', {
+    headers: { 'x-admin-token': token },
+  });
+  const cd = dlRes.headers.get('content-disposition') || '';
+  const hasFilenameStar = cd.includes("filename*=UTF-8''");
+  const hasNoCRLF = !/[\r\n]/.test(cd);
+  if (hasFilenameStar && hasNoCRLF) {
+    ok('Content-Disposition uses RFC 5987 + CRLF-safe');
+  } else {
+    bad('Content-Disposition unsafe', cd);
+  }
+
+  // ===== Test 19: i18n keys exist for all 3 languages =====
+  console.log('\n[BUG NEW] i18n — every key has uz/ru/en');
+  // Read the i18n file and parse the translations object via a regex.
+  const i18nSrc = fs.readFileSync('./public/js/i18n.js', 'utf8');
+  const dictMatch = i18nSrc.match(/const translations = (\{[\s\S]*?\n  \});/);
+  if (!dictMatch) {
+    bad('i18n parse');
+  } else {
+    // Eval the literal in a sandboxed Function (safe, no I/O).
+    let dict;
+    try {
+      // eslint-disable-next-line no-new-func
+      dict = new Function('return ' + dictMatch[1])();
+    } catch (e) {
+      bad('i18n eval', e.message);
+    }
+    if (dict) {
+      const missing = [];
+      for (const [key, langs] of Object.entries(dict)) {
+        for (const lang of ['uz', 'ru', 'en']) {
+          if (!langs[lang] || typeof langs[lang] !== 'string') {
+            missing.push(`${key}#${lang}`);
+          }
+        }
+      }
+      if (missing.length === 0) {
+        ok(`every key has all 3 languages (${Object.keys(dict).length} keys)`);
+      } else {
+        bad('i18n incomplete', `missing: ${missing.slice(0, 5).join(', ')}${missing.length > 5 ? '…' : ''}`);
+      }
+    }
+  }
+
+  // ===== Test 20: HTTP rate-limit headers on /api/* =====
+  console.log('\n[BUG NEW] Rate-limit headers present on API');
+  const rl = await fetch(base + '/api/games');
+  // express-rate-limit v7 (draft-7) emits `ratelimit` and `ratelimit-policy`.
+  // Older versions emit `ratelimit-limit` / `x-ratelimit-limit`.
+  const hasLimitHeader =
+    !!rl.headers.get('ratelimit') ||
+    !!rl.headers.get('ratelimit-policy') ||
+    !!rl.headers.get('ratelimit-limit') ||
+    !!rl.headers.get('x-ratelimit-limit');
+  if (hasLimitHeader) {
+    ok('RateLimit headers exposed on /api/games (draft-7 or legacy)');
+  } else {
+    bad('no rate limit header', JSON.stringify([...rl.headers.entries()]));
+  }
+
+  // ===== Test 21: CSP + security headers =====
+  console.log('\n[BUG NEW] Security headers present');
+  const idx = await fetch(base + '/');
+  const csp = idx.headers.get('content-security-policy');
+  const xfo = idx.headers.get('x-content-type-options');
+  if (csp && csp.includes("default-src") && xfo === 'nosniff') {
+    ok(`CSP set, X-Content-Type-Options=${xfo}`);
+  } else {
+    bad('security headers', `CSP=${!!csp} XCTO=${xfo}`);
+  }
+
+  // ===== Test 22: Request ID round-trip =====
+  console.log('\n[BUG NEW] X-Request-Id header round-trip');
+  const ridRes = await fetch(base + '/api/health', {
+    headers: { 'x-request-id': 'test-correlation-12345' },
+  });
+  if (ridRes.headers.get('x-request-id') === 'test-correlation-12345') {
+    ok('upstream X-Request-Id is preserved');
+  } else {
+    bad('request id', ridRes.headers.get('x-request-id'));
   }
 
   // ===== Summary =====

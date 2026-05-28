@@ -22,26 +22,26 @@ function buildAdminRouter({ tokens, games, storage }) {
     } catch (err) { next(err); }
   });
 
-  router.delete('/games', (req, res, next) => {
+  router.delete('/games', async (req, res, next) => {
     try {
-      const deleted = games.deleteAll();
+      const deleted = await games.deleteAll();
       res.json({ success: true, deleted });
     } catch (err) { next(err); }
   });
 
-  router.delete('/games/:id', (req, res, next) => {
+  router.delete('/games/:id', async (req, res, next) => {
     try {
-      games.delete(req.params.id);
+      await games.delete(req.params.id);
       res.json({ success: true });
     } catch (err) { next(err); }
   });
 
-  router.patch('/games/:id', (req, res, next) => {
+  router.patch('/games/:id', async (req, res, next) => {
     try {
       const patch = validate(patchGameSchema, req.body);
       let game = games.getById(req.params.id);
       if ('isPrivate' in patch) {
-        game = games.setPrivacy(req.params.id, patch.isPrivate);
+        game = await games.setPrivacy(req.params.id, patch.isPrivate);
       }
       res.json(games.adminView(game));
     } catch (err) { next(err); }
