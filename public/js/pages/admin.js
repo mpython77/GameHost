@@ -13,8 +13,12 @@
 
       // If we already have a valid token, skip login
       if (await Auth.check()) {
+        // Reveal page on dashboard
+        document.documentElement.classList.remove('gh-auth-loading');
         return this.showDashboard();
       }
+      // Token absent or invalid — show login screen
+      document.documentElement.classList.remove('gh-auth-loading');
       $('#login-screen').style.display = 'flex';
       $('#login-form').addEventListener('submit', (e) => this.handleLogin(e));
     },
