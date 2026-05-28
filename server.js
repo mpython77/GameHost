@@ -19,16 +19,23 @@ const server = app.listen(config.PORT, '0.0.0.0', () => {
     '  🚀 ══════════════════════════════════════',
     '  🚀  GAME HOST v3.0  (modular architecture)',
     '  🚀 ══════════════════════════════════════',
-    `  🌐  Port: ${config.PORT}`,
-    `  🔧  Env:  ${config.NODE_ENV}`,
-    `  📂  Data: ${config.DATA_DIR}`,
-    `  🎮  Games: ${app.locals.deps.games.db.count()}`,
+    `  🌐  Listen: 0.0.0.0:${config.PORT}`,
+    `  🔧  Env:    ${config.NODE_ENV}`,
+    `  📂  Data:   ${config.DATA_DIR}`,
+    `  🎮  Games:  ${app.locals.deps.games.db.count()}`,
+    `  ❤️   Health: GET /api/health`,
     '  🛡️   helmet · compression · rate-limit · denylist',
     '  🚀 ══════════════════════════════════════',
     '',
   ].join('\n');
   // eslint-disable-next-line no-console
   console.log(banner);
+});
+
+// In rare cases the listen callback never fires (port in use). Surface that.
+server.on('error', (err) => {
+  logger.fatal('listen.error', { error: err.message, code: err.code, port: config.PORT });
+  process.exit(1);
 });
 
 // ─── Graceful shutdown ───

@@ -161,3 +161,48 @@ Birinchi `npm start` ishga tushirilganda `src/migrations/legacy.js` quyidagilarn
 2. Eski `js/games-config.js` ichidagi o'yinlarni `data/games-db.json` ga import qiladi (faqat DB bo'sh bo'lsa)
 
 Eski strukturasi yo'qotilmaydi.
+
+
+---
+
+## 🆘 Troubleshooting — Railway
+
+### "Healthcheck failure" deploy log'ida
+
+**Sabab 1 — Eng ko'p uchraydi:** Server v3 production'da `ADMIN_USERNAME` / `ADMIN_PASSWORD` env-larini topa olmadi.
+
+**Yechim:** Railway → Service → Variables ga quyidagilarni qo'shing va qaytadan deploy qiling:
+```
+ADMIN_USERNAME=siz_belgilagan_login
+ADMIN_PASSWORD=mustahkam_parol_kamida_12_belgi
+DATA_DIR=/app/data
+```
+
+> v3.0.1 dan boshlab, agar bu env-lar yo'q bo'lsa, server **vaqtinchalik tasodifiy parol generatsiya qiladi** va log'da chiqaradi (server o'lmaydi). Railway logs'ga qarab, vaqtincha shu parol bilan kirishingiz mumkin, lekin har restart'da o'zgaradi.
+
+**Sabab 2:** Volume mount qilinmagan, lekin `DATA_DIR=/app/data` ga ishora qiladi.
+
+**Yechim:** Railway → Service → Settings → Volumes → "Add Volume" → mount path `/app/data` (yoki `DATA_DIR` ni o'chirib, default `./data` ishlatish — lekin har deploy'da o'yinlar yo'qoladi).
+
+**Sabab 3:** Healthcheck timeout juda qisqa.
+
+**Yechim:** `railway.json` da `healthcheckTimeout: 100` qo'yilgan (30 sekunddan 100 ga oshirildi). Agar bu yetmasa, 300 ga oshiring.
+
+### Server logs'ni ko'rish
+
+Railway → Deployments → "View Logs". `🚀 GAME HOST v3.0` banner'i ko'rinishi kerak. Agar yo'q bo'lsa, server boot bo'lmagan.
+
+### Health endpoint'ni qo'lda tekshirish
+
+```
+curl https://your-app.up.railway.app/api/health
+# kutilgan natija: {"status":"ok",...}
+```
+
+### Eski v2 dan v3 ga migratsiya
+
+Birinchi `npm start` da `src/migrations/legacy.js` quyidagilarni avtomatik bajaradi:
+1. Eski `./games/*` → `data/games/`
+2. Eski `js/games-config.js` → `data/games-db.json`
+
+Bu idempotent — qayta ishga tushirish xavfsiz.

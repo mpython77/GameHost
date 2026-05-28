@@ -46,22 +46,42 @@ const DATA_DIR = process.env.DATA_DIR
 
 const PUBLIC_DIR = path.join(ROOT, 'public');
 
-// ─── Production safety: refuse default credentials ───
-const ADMIN_USERNAME = process.env.ADMIN_USERNAME || 'admin';
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'admin';
+// ─── Production credential strategy ───
+// In production, if ADMIN_USERNAME/PASSWORD are not set, we DO NOT exit
+// (that would fail Railway healthcheck and leave the user clueless).
+// Instead, generate a one-time random password and log it loudly.
+// This keeps healthcheck green while still preventing default `admin/admin`.
+const crypto = require('crypto');
 
-const usingDefaults =
-  ADMIN_USERNAME === 'admin' && ADMIN_PASSWORD === 'admin';
+const userProvided = !!process.env.ADMIN_USERNAME && !!process.env.ADMIN_PASSWORD;
+let ADMIN_USERNAME = process.env.ADMIN_USERNAME || 'admin';
+let ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'admin';
+let TEMP_PASSWORD_GENERATED = false;
 
-if (isProd && usingDefaults) {
-  // Hard fail in production — never run with default creds
+if (isProd && !userProvided) {
+  ADMIN_USERNAME = process.env.ADMIN_USERNAME || 'admin';
+  ADMIN_PASSWORD = crypto.randomBytes(18).toString('base64url');
+  TEMP_PASSWORD_GENERATED = true;
   // eslint-disable-next-line no-console
-  console.error(
-    '\n  ❌  FATAL: ADMIN_USERNAME va ADMIN_PASSWORD env-larini\n' +
-    '      production rejimida albatta o\'zgartiring.\n' +
-    '      Default `admin/admin` ruxsat etilmaydi.\n'
-  );
-  process.exit(1);
+  const banner = [
+    '',
+    '════════════════════════════════════════════════════════════════',
+    '⚠️   PRODUCTION ADMIN CREDENTIALS NOT CONFIGURED',
+    '════════════════════════════════════════════════════════════════',
+    '  ADMIN_USERNAME / ADMIN_PASSWORD env-lari sozlanmagan.',
+    '  Vaqtinchalik tasodifiy admin parol generatsiya qilindi:',
+    '',
+    `    Username: ${ADMIN_USERNAME}`,
+    `    Password: ${ADMIN_PASSWORD}`,
+    '',
+    '  ⚠️  Bu parol HAR RESTART da o\'zgaradi.',
+    '  ⚠️  Railway → Variables ga ADMIN_USERNAME va ADMIN_PASSWORD',
+    '       qo\'shing va qaytadan deploy qiling.',
+    '════════════════════════════════════════════════════════════════',
+    '',
+  ].join('\n');
+  console.log(banner);   // stdout (Railway primary log stream)
+  console.error(banner); // stderr (some platforms only capture this)
 }
 
 // ─── Exported config ───
@@ -87,6 +107,7 @@ const config = Object.freeze({
   // Auth
   ADMIN_USERNAME,
   ADMIN_PASSWORD,
+  TEMP_PASSWORD_GENERATED,
   ADMIN_SECRET_ENV: process.env.ADMIN_SECRET || null,
   ADMIN_TOKEN_TTL_MS: int(process.env.ADMIN_TOKEN_TTL_MS, 8 * 60 * 60 * 1000),
 
