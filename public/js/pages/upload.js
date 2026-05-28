@@ -25,7 +25,17 @@
       $$('.lang-btn').forEach((b) => {
         b.addEventListener('click', () => I18N.setLang(b.dataset.lang));
       });
-      I18N.onChange(() => this.loadGamesList());
+      I18N.onChange(() => {
+        this.loadGamesList();
+        // Re-translate copy buttons in result section if visible
+        if ($('#upload-result').classList.contains('visible')) {
+          $$('#upload-result .copy-btn').forEach((btn) => {
+            if (!btn.textContent.includes('\u2713')) {
+              btn.textContent = I18N.t('upload.copyBtn');
+            }
+          });
+        }
+      });
 
       this.setupDropZone();
       this.setupThumbnail();

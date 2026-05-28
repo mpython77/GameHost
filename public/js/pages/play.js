@@ -5,7 +5,7 @@
  */
 
 (function () {
-  const { $, $$ } = window.GH;
+  const { $, $$, escapeHTML } = window.GH;
   const { api } = window.GH;
 
   const Player = {
@@ -78,16 +78,17 @@
       const msg = kind === 'notFound'
         ? I18N.t('player.notFound')
         : I18N.t('player.networkError');
+      const backText = I18N.t('player.back') || 'Orqaga';
       loading.classList.remove('hidden');
       loading.innerHTML = `
         <div style="text-align:center;max-width:320px;">
           <div style="font-size:48px;margin-bottom:1rem;">😕</div>
-          <div class="loading-text" style="color:#ef4444;margin-bottom:1.25rem;">${msg}</div>
+          <div class="loading-text" style="color:#ef4444;margin-bottom:1.25rem;">${escapeHTML(msg)}</div>
           <a href="index.html" style="
             display:inline-block;padding:8px 22px;border-radius:999px;
             background:rgba(124,58,237,0.15);color:#a78bfa;
             text-decoration:none;font-weight:600;">
-            ← ${I18N.t('player.back') || 'Orqaga'}
+            ← ${escapeHTML(backText)}
           </a>
         </div>`;
     },

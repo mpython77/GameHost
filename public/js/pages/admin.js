@@ -7,6 +7,7 @@
 
   const Admin = {
     state: { games: [], filter: 'all', search: '', pendingDeleteId: null },
+    _storageCache: null,
 
     async init() {
       this.initParticles();
@@ -23,7 +24,7 @@
         if ($('#admin-dashboard').classList.contains('visible')) {
           this.renderTable();
           this.loadStats();
-          this.loadStorage();
+          this.rerenderStorage();
         }
       });
 
@@ -290,6 +291,7 @@
       el.innerHTML = `<div class="table-loading"><div class="loading-spinner"></div><div>${escapeHTML(I18N.t('admin.loading'))}</div></div>`;
       try {
         const data = await api.get('/api/admin/storage');
+        this._storageCache = data;
         el.innerHTML = `
           <div class="storage-info">
             <span class="storage-total">💾 ${escapeHTML(data.totalSizeHuman)}</span>
@@ -299,6 +301,18 @@
       } catch (err) {
         el.innerHTML = `<div style="color:#ef4444;padding:8px;">${escapeHTML(I18N.t('admin.errorPrefix'))}: ${escapeHTML(err.message)}</div>`;
       }
+    },
+
+    rerenderStorage() {
+      if (!this._storageCache) return;
+      const el = $('#storage-body');
+      const data = this._storageCache;
+      el.innerHTML = `
+        <div class="storage-info">
+          <span class="storage-total">💾 ${escapeHTML(data.totalSizeHuman)}</span>
+          <span class="storage-path">${escapeHTML(data.dataDir)}</span>
+        </div>
+        <div class="storage-tree">${this.renderTree(data.tree, data.dataDir)}</div>`;
     },
 
     renderTree(nodes, base) {
