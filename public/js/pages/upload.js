@@ -15,12 +15,17 @@
       I18N.init();
       I18N.applyTranslations();
 
-      // Auth gate
+      // Auth gate (server-side check). The synchronous pre-gate in upload.html
+      // already redirected anonymous users; here we verify the token is still
+      // valid on the server. If invalid, redirect & keep page hidden.
       if (!(await Auth.check())) {
         try { sessionStorage.setItem('gamehost_redirect', 'upload.html'); } catch {}
-        window.location.href = 'admin.html';
+        window.location.replace('admin.html');
         return;
       }
+
+      // Auth confirmed — reveal the page.
+      document.documentElement.classList.remove('gh-auth-loading');
 
       $$('.lang-btn').forEach((b) => {
         b.addEventListener('click', () => I18N.setLang(b.dataset.lang));
