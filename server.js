@@ -59,6 +59,12 @@ function shutdown(signal) {
     if (app.locals.deps && app.locals.deps.tokens && typeof app.locals.deps.tokens.close === 'function') {
       app.locals.deps.tokens.close();
     }
+    if (app.locals.deps && app.locals.deps.analytics && typeof app.locals.deps.analytics.close === 'function') {
+      app.locals.deps.analytics.close();
+    }
+    if (app.locals.deps && app.locals.deps.sseTickets && typeof app.locals.deps.sseTickets.close === 'function') {
+      app.locals.deps.sseTickets.close();
+    }
   } catch (err) {
     logger.warn('shutdown.flush_failed', { error: err.message });
   }

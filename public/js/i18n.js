@@ -484,6 +484,27 @@ const I18N = (() => {
     'admin.toastDeletedFile': { uz: '"{name}" o\'chirildi', ru: '"{name}" удалён', en: '"{name}" deleted' },
     'admin.wrongCredentials': { uz: "Login yoki parol noto'g'ri", ru: 'Неверный логин или пароль', en: 'Wrong username or password' },
 
+    // ─── Analytics dashboard ───
+    'analytics.title':         { uz: '📈 Analitika', ru: '📈 Аналитика', en: '📈 Analytics' },
+    'analytics.range7d':       { uz: '7 kun', ru: '7 дней', en: '7 days' },
+    'analytics.range30d':      { uz: '30 kun', ru: '30 дней', en: '30 days' },
+    'analytics.range90d':      { uz: '90 kun', ru: '90 дней', en: '90 days' },
+    'analytics.rangePlays':    { uz: "Davr o'ynashlari", ru: 'Запусков за период', en: 'Plays in range' },
+    'analytics.rangeUploads':  { uz: "Davr yuklashlari", ru: 'Загрузок за период', en: 'Uploads in range' },
+    'analytics.allTimePlays':  { uz: "Hammavaqt o'ynashlari", ru: 'Всего запусков', en: 'All-time plays' },
+    'analytics.connection':    { uz: 'Live ulanish', ru: 'Live соединение', en: 'Live connection' },
+    'analytics.sseConnected':  { uz: 'Ulangan', ru: 'Подключено', en: 'Connected' },
+    'analytics.sseDisconnected': { uz: "Uzilgan — qayta urinilyapti", ru: 'Отключено — переподключаемся', en: 'Disconnected — retrying' },
+    'analytics.sseConnecting': { uz: 'Ulanmoqda...', ru: 'Подключение...', en: 'Connecting...' },
+    'analytics.activityChart': { uz: "Faollik (har kunlik)", ru: 'Активность (по дням)', en: 'Activity (daily)' },
+    'analytics.privacyChart':  { uz: 'Public / Private', ru: 'Публичные / Приватные', en: 'Public / Private' },
+    'analytics.categoryChart': { uz: 'Kategoriyalar', ru: 'Категории', en: 'Categories' },
+    'analytics.topGamesChart': { uz: "Top o'yinlar", ru: 'Топ игр', en: 'Top games' },
+    'analytics.plays':         { uz: "O'ynashlar", ru: 'Запуски', en: 'Plays' },
+    'analytics.uploads':       { uz: 'Yuklashlar', ru: 'Загрузки', en: 'Uploads' },
+    'analytics.toastUploaded': { uz: '🆕 Yangi o\'yin yuklandi: {name}', ru: '🆕 Новая игра загружена: {name}', en: '🆕 New game uploaded: {name}' },
+    'analytics.toastDeleted':  { uz: '🗑️ O\'yin o\'chirildi: {name}', ru: '🗑️ Игра удалена: {name}', en: '🗑️ Game deleted: {name}' },
+
     // ─── Home page extras ───
     'home.login': { uz: '🔑 Kirish', ru: '🔑 Войти', en: '🔑 Sign in' },
     'home.adminBtn': { uz: '⚙️ Admin', ru: '⚙️ Админ', en: '⚙️ Admin' },

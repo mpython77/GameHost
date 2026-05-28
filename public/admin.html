@@ -130,6 +130,70 @@
       </div>
     </div>
 
+    <!-- ═══ Analytics dashboard ═══ -->
+    <section class="analytics-section" id="analytics-section">
+      <div class="analytics-header">
+        <h2 class="analytics-title" data-i18n="analytics.title">📈 Analitika</h2>
+        <div class="analytics-range" id="analytics-range">
+          <button class="range-btn" data-days="7"  data-i18n="analytics.range7d">7 kun</button>
+          <button class="range-btn active" data-days="30" data-i18n="analytics.range30d">30 kun</button>
+          <button class="range-btn" data-days="90" data-i18n="analytics.range90d">90 kun</button>
+        </div>
+      </div>
+
+      <div class="analytics-summary" id="analytics-summary">
+        <div class="analytics-stat">
+          <div class="analytics-stat-label" data-i18n="analytics.rangePlays">Davr o'ynashlari</div>
+          <div class="analytics-stat-value" id="an-range-plays">—</div>
+        </div>
+        <div class="analytics-stat">
+          <div class="analytics-stat-label" data-i18n="analytics.rangeUploads">Davr yuklashlari</div>
+          <div class="analytics-stat-value" id="an-range-uploads">—</div>
+        </div>
+        <div class="analytics-stat">
+          <div class="analytics-stat-label" data-i18n="analytics.allTimePlays">Hammavaqt o'ynashlari</div>
+          <div class="analytics-stat-value" id="an-all-plays">—</div>
+        </div>
+        <div class="analytics-stat">
+          <div class="analytics-stat-label" data-i18n="analytics.connection">Live ulanish</div>
+          <div class="analytics-stat-value" id="an-sse-status">
+            <span class="sse-dot disconnected" id="sse-dot"></span>
+            <span id="sse-label" data-i18n="analytics.sseConnecting">Ulanmoqda...</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="analytics-grid">
+        <div class="chart-card chart-large">
+          <div class="chart-card-title" data-i18n="analytics.activityChart">Faollik (har kunlik)</div>
+          <div class="chart-canvas-wrap">
+            <canvas id="chart-activity"></canvas>
+          </div>
+        </div>
+
+        <div class="chart-card">
+          <div class="chart-card-title" data-i18n="analytics.privacyChart">Public / Private</div>
+          <div class="chart-canvas-wrap">
+            <canvas id="chart-privacy"></canvas>
+          </div>
+        </div>
+
+        <div class="chart-card">
+          <div class="chart-card-title" data-i18n="analytics.categoryChart">Kategoriyalar</div>
+          <div class="chart-canvas-wrap">
+            <canvas id="chart-category"></canvas>
+          </div>
+        </div>
+
+        <div class="chart-card chart-large">
+          <div class="chart-card-title" data-i18n="analytics.topGamesChart">Top o'yinlar</div>
+          <div class="chart-canvas-wrap">
+            <canvas id="chart-top"></canvas>
+          </div>
+        </div>
+      </div>
+    </section>
+
     <div class="table-section" id="storage-section" style="margin-top:var(--space-xl);">
       <div class="table-header">
         <div class="table-title" data-i18n="admin.storage">💾 Storage Manager</div>
@@ -161,6 +225,9 @@
 <script src="js/lib/toast.js"></script>
 <script src="js/lib/auth.js"></script>
 <script src="js/lib/api.js"></script>
+<script src="js/lib/sse.js"></script>
+<script src="js/lib/charts.js"></script>
 <script src="js/pages/admin.js"></script>
+<script src="js/pages/admin-analytics.js"></script>
 </body>
 </html>

@@ -15,7 +15,8 @@ function clientIp(req) {
 
 const upload = rateLimit({
   windowMs: 5 * 60 * 1000,
-  limit: 10,
+  limit: process.env.GH_DISABLE_RATE_LIMIT === '1' ? 0 : 10,
+  skip: () => process.env.GH_DISABLE_RATE_LIMIT === '1',
   standardHeaders: 'draft-7',
   legacyHeaders: false,
   message: { error: "Juda ko'p fayl yukladingiz. 5 daqiqa kuting." },

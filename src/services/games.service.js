@@ -13,15 +13,21 @@ const logger = require('../lib/logger');
 const { rmRecursive } = require('../lib/files');
 const { NotFoundError } = require('../lib/errors');
 const { Mutex } = require('../lib/mutex');
+const { EVENTS } = require('../lib/event-bus');
 
 class GamesService {
-  constructor(db) {
+  constructor(db, bus) {
     this.db = db;
+    this.bus = bus; // optional EventBus
     // Mutex for write operations that involve disk + DB updates.
     // Prevents TOCTOU between fs.renameSync (setPrivacy) and DB update,
     // and between getById and rmRecursive (delete) when concurrent admin
     // requests target the same game.
     this._mutex = new Mutex();
+  }
+
+  _emit(type, data) {
+    if (this.bus) this.bus.publish(type, data);
   }
 
   // ─── Read ───
@@ -66,6 +72,11 @@ class GamesService {
       gameId: id,
       playCount: game.playCount,
       ip: meta.ip,
+    });
+    this._emit(EVENTS.GAME_PLAYED, {
+      gameId: id,
+      playCount: game.playCount,
+      isPrivate: !!game.isPrivate,
     });
     return game;
   }
@@ -112,11 +123,17 @@ class GamesService {
         }
       }
 
-      return this.db.update(id, {
+      const updated = this.db.update(id, {
         isPrivate: !!isPrivate,
         privateToken: newToken,
         folder: newFolder,
       });
+      this._emit(EVENTS.GAME_PRIVACY, {
+        gameId: id,
+        isPrivate: !!isPrivate,
+        folder: newFolder,
+      });
+      return updated;
     });
   }
 
@@ -127,6 +144,7 @@ class GamesService {
       rmRecursive(path.join(config.GAMES_DIR, game.folder));
       this.db.remove(id);
       logger.info('game.deleted', { gameId: id, folder: game.folder });
+      this._emit(EVENTS.GAME_DELETED, { gameId: id });
       return game;
     });
   }
@@ -142,6 +160,7 @@ class GamesService {
       }
       this.db.removeAll();
       logger.warn('games.delete_all', { count: deleted });
+      this._emit(EVENTS.GAMES_CLEARED, { count: deleted });
       return deleted;
     });
   }
