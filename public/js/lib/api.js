@@ -8,9 +8,22 @@
  */
 window.GH = window.GH || {};
 window.GH.api = (function () {
+  const DEFAULT_TIMEOUT_MS = 15000;
+
   function authHeaders() {
     const t = window.GH.Auth && window.GH.Auth.getToken();
     return t ? { 'x-admin-token': t } : {};
+  }
+
+  /** Fetch with timeout via AbortController. */
+  function timedFetch(url, init = {}, timeoutMs = DEFAULT_TIMEOUT_MS) {
+    if (typeof AbortController === 'undefined') {
+      return fetch(url, init); // very old browsers
+    }
+    const ctl = new AbortController();
+    const timer = setTimeout(() => ctl.abort(), timeoutMs);
+    return fetch(url, { ...init, signal: ctl.signal })
+      .finally(() => clearTimeout(timer));
   }
 
   async function request(method, path, body, opts = {}) {
@@ -22,8 +35,11 @@ window.GH.api = (function () {
     }
     let res;
     try {
-      res = await fetch(path, init);
+      res = await timedFetch(path, init, opts.timeoutMs);
     } catch (err) {
+      if (err && err.name === 'AbortError') {
+        throw new Error('So\'rov vaqti tugadi (timeout)');
+      }
       throw new Error('Tarmoq xatosi: ' + (err.message || 'noma\'lum'));
     }
     let data = null;

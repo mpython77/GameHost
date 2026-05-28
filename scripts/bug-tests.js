@@ -220,6 +220,108 @@ const server = app.listen(0, '127.0.0.1', async () => {
     bad('private→public restore', JSON.stringify(restored));
   }
 
+  // ===== Test 10: QR endpoint info-leak fix =====
+  console.log('\n[BUG NEW] QR endpoint info leak');
+  // Anonymous request for nonexistent game id
+  const qr1 = await fetch(base + '/api/games/no-such-game/qr');
+  // Anonymous request for a private game (priv from earlier)
+  const qr2 = await fetch(base + '/api/games/' + priv.game.id + '/qr');
+  if (qr1.status === 404 && qr2.status === 404) {
+    ok('private + missing both → 404 (no leak)');
+  } else {
+    bad('QR info leak', `missing=${qr1.status} private=${qr2.status} (both should be 404)`);
+  }
+
+  // ===== Test 11: Token shape validation =====
+  console.log('\n[BUG NEW] Malformed private token rejected');
+  const r5 = await fetch(base + '/api/games/private/' + 'XX-not-hex-XX');
+  if (r5.status === 404) {
+    ok('non-hex token → 404');
+  } else {
+    bad('malformed token', `got ${r5.status}`);
+  }
+
+  // ===== Test 12: Zero-byte upload rejected =====
+  console.log('\n[BUG NEW] Zero-byte file rejected');
+  const zfd = new FormData();
+  zfd.append('gameFile', new Blob([], { type: 'text/html' }), 'empty.html');
+  zfd.append('gameName_uz', 'Empty');
+  zfd.append('gameName_en', 'Empty');
+  zfd.append('category', 'arcade');
+  zfd.append('isPrivate', 'false');
+  const zr = await fetch(base + '/api/upload', {
+    method: 'POST',
+    headers: { 'x-admin-token': token },
+    body: zfd,
+  });
+  if (zr.status === 400) {
+    ok('empty file → 400');
+  } else {
+    bad('empty file', `got ${zr.status}`);
+  }
+
+  // ===== Test 13: ZIP backslash entry rejected =====
+  console.log('\n[BUG NEW] ZIP backslash in entry name');
+  const { isSafeEntryName } = require('../src/lib/zip');
+  if (!isSafeEntryName('foo\\..\\bar')) ok('backslash entry → unsafe');
+  else bad('backslash entry');
+  if (!isSafeEntryName('./foo')) ok('./ entry → unsafe');
+  else bad('./ entry');
+  if (isSafeEntryName('normal/path/file.html')) ok('normal entry → safe');
+  else bad('normal entry');
+
+  // ===== Test 14: Buffered play counter =====
+  console.log('\n[BUG NEW] Play counter is buffered');
+  const ginfo = await fetch(base + '/api/games').then((r) => r.json());
+  if (Array.isArray(ginfo) && ginfo.length > 0) {
+    const gid = ginfo[0].id;
+    const before = (await fetch(base + '/api/admin/games', {
+      headers: { 'x-admin-token': token },
+    }).then((r) => r.json())).find((g) => g.id === gid).playCount || 0;
+
+    // Bombard with 10 plays
+    await Promise.all(Array.from({ length: 10 }, () =>
+      fetch(base + '/api/games/' + gid + '/play', { method: 'POST' }).then((r) => r.json()).catch(() => null)
+    ));
+
+    // In-memory increment is immediate; flush will happen later.
+    const after = (await fetch(base + '/api/admin/games', {
+      headers: { 'x-admin-token': token },
+    }).then((r) => r.json())).find((g) => g.id === gid).playCount || 0;
+
+    if (after >= before + 1 && after <= before + 10) {
+      ok(`play count incremented in memory: ${before} → ${after}`);
+    } else {
+      bad('play counter buffer', `before=${before} after=${after}`);
+    }
+  } else {
+    console.log('  \x1b[33m⚠\x1b[0m  no public games to test');
+  }
+
+  // ===== Test 15: Mutex serializes uploads =====
+  console.log('\n[BUG NEW] Concurrent uploads serialized via mutex');
+  const html = fs.readFileSync('./scripts/_fixtures/test-game.html');
+  const concurrentUploads = await Promise.all([0, 1, 2].map((n) => {
+    const ufd = new FormData();
+    ufd.append('gameFile', new Blob([html], { type: 'text/html' }), 'concurrent.html');
+    ufd.append('gameName_uz', 'Concurrent');
+    ufd.append('gameName_en', 'Concurrent');
+    ufd.append('category', 'arcade');
+    ufd.append('isPrivate', 'false');
+    return fetch(base + '/api/upload', {
+      method: 'POST',
+      headers: { 'x-admin-token': token },
+      body: ufd,
+    }).then((r) => r.json());
+  }));
+  const ids = concurrentUploads.map((r) => r.game && r.game.id).sort();
+  const allUnique = new Set(ids).size === ids.length;
+  if (allUnique && ids.every((id) => id && id.startsWith('concurrent'))) {
+    ok(`concurrent uploads got unique IDs: ${ids.join(', ')}`);
+  } else {
+    bad('mutex serialize', JSON.stringify(ids));
+  }
+
   // ===== Summary =====
   console.log(`\n  ${pass} pass, ${fail} fail\n`);
   server.close(() => process.exit(fail === 0 ? 0 : 1));

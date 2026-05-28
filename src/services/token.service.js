@@ -16,8 +16,9 @@ class TokenService {
    * @param {string} opts.secret      HMAC signing key
    * @param {number} opts.ttlMs       Token lifetime in ms
    * @param {string} opts.denylistFile  Path to JSON file persisting revoked token jti's
+   * @param {number} [opts.cleanupIntervalMs]  How often to GC expired entries
    */
-  constructor({ secret, ttlMs, denylistFile }) {
+  constructor({ secret, ttlMs, denylistFile, cleanupIntervalMs = 60 * 60 * 1000 }) {
     if (!secret || secret.length < 16) {
       throw new Error('TokenService: secret too short');
     }
@@ -25,6 +26,33 @@ class TokenService {
     this.ttlMs = ttlMs;
     this.denylistFile = denylistFile;
     this.denylist = this._loadDenylist();
+    this._dirty = false;
+
+    // Periodic cleanup so the denylist Map doesn't grow unbounded over
+    // weeks of uptime (every revoke before was the only trigger).
+    if (cleanupIntervalMs > 0) {
+      this._gcTimer = setInterval(() => this._gc(), cleanupIntervalMs);
+      // Don't keep the process alive just for this timer.
+      if (typeof this._gcTimer.unref === 'function') this._gcTimer.unref();
+    }
+  }
+
+  /** Stop the GC timer (mainly for tests). */
+  close() {
+    if (this._gcTimer) {
+      clearInterval(this._gcTimer);
+      this._gcTimer = null;
+    }
+  }
+
+  _gc() {
+    const before = this.denylist.size;
+    this._cleanup();
+    if (this.denylist.size !== before || this._dirty) {
+      this._persistDenylist();
+      this._dirty = false;
+      logger.debug('denylist.gc', { before, after: this.denylist.size });
+    }
   }
 
   _loadDenylist() {

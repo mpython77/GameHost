@@ -233,6 +233,10 @@
     setupHeroParticles() {
       const canvas = $('#hero-canvas');
       if (!canvas) return;
+      // Respect reduced-motion preference — skip the animation entirely.
+      if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+        return;
+      }
       const ctx = canvas.getContext('2d');
       const hero = canvas.closest('.hero');
       const resize = () => {
@@ -250,7 +254,19 @@
         r: Math.random() * 2 + 0.5,
       }));
 
+      let running = true;
+      // Pause the animation when the tab is hidden — saves battery.
+      document.addEventListener('visibilitychange', () => {
+        if (document.hidden) {
+          running = false;
+        } else if (!running) {
+          running = true;
+          requestAnimationFrame(tick);
+        }
+      });
+
       const tick = () => {
+        if (!running) return;
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         dots.forEach((d) => {
           d.x += d.vx; d.y += d.vy;
@@ -284,6 +300,8 @@
     setupCardTilt() {
       // Skip on touch / coarse pointers
       if (window.matchMedia && window.matchMedia('(pointer: coarse)').matches) return;
+      // Also skip when user prefers reduced motion (accessibility).
+      if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
 
       // The original implementation called getBoundingClientRect for EVERY
       // card on EVERY mousemove (~100Hz). With 50 cards that's 5000 layout
