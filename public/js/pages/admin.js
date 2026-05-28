@@ -10,10 +10,24 @@
 
     async init() {
       this.initParticles();
+      // i18n init must run before showing anything
+      I18N.init();
+      I18N.applyTranslations();
+
+      // Lang switcher (works on both login and dashboard screens)
+      $$('.lang-btn').forEach((btn) => {
+        btn.addEventListener('click', () => I18N.setLang(btn.dataset.lang));
+      });
+      I18N.onChange(() => {
+        // Re-render dynamic content (table headers, stats labels, etc.)
+        if ($('#admin-dashboard').classList.contains('visible')) {
+          this.renderTable();
+          this.loadStats();
+        }
+      });
 
       // If we already have a valid token, skip login
       if (await Auth.check()) {
-        // Reveal page on dashboard
         document.documentElement.classList.remove('gh-auth-loading');
         return this.showDashboard();
       }
@@ -32,7 +46,7 @@
 
       errEl.classList.remove('visible');
       btn.disabled = true;
-      $('#login-btn-text').textContent = 'Tekshirilmoqda...';
+      $('#login-btn-text').textContent = I18N.t('admin.checking');
 
       try {
         const { token } = await api.post('/api/admin/login', { username, password });
@@ -45,11 +59,11 @@
         }
         this.showDashboard();
       } catch (err) {
-        errEl.textContent = err.message;
+        errEl.textContent = err.status === 401 ? I18N.t('admin.wrongCredentials') : err.message;
         errEl.classList.add('visible');
       } finally {
         btn.disabled = false;
-        $('#login-btn-text').textContent = 'Kirish';
+        $('#login-btn-text').textContent = I18N.t('admin.loginBtn');
       }
     },
 
@@ -70,7 +84,7 @@
       $('#login-screen').style.display = 'flex';
       $('#admin-username').value = '';
       $('#admin-password').value = '';
-      toast('Chiqildi', 'success');
+      toast(I18N.t('admin.toastLoggedOut'), 'success');
     },
 
     // ─── Stats ───
@@ -92,16 +106,16 @@
             <div class="top-name">${escapeHTML(name)}</div>
             <div class="top-plays">▶ ${g.playCount || 0}</div>
           </div>`;
-        }).join('') || '<div style="color:var(--text-muted);font-size:var(--font-sm);padding:8px 0;">Ma\'lumot yo\'q</div>';
+        }).join('') || `<div style="color:var(--text-muted);font-size:var(--font-sm);padding:8px 0;">${escapeHTML(I18N.t('admin.noData'))}</div>`;
 
         const qs = $('#quick-stats');
         const avg = stats.total > 0 ? (stats.totalPlays / stats.total).toFixed(1) : 0;
         const pubPct = stats.total > 0 ? Math.round(stats.public / stats.total * 100) : 0;
         const prvPct = stats.total > 0 ? Math.round(stats.private / stats.total * 100) : 0;
         qs.innerHTML = `
-          <div class="top-item"><div class="top-name" style="color:var(--text-secondary);">O'rtacha o'ynash</div><div class="top-plays">${avg}</div></div>
-          <div class="top-item"><div class="top-name" style="color:var(--text-secondary);">Public ulushi</div><div class="top-plays">${pubPct}%</div></div>
-          <div class="top-item"><div class="top-name" style="color:var(--text-secondary);">Private ulushi</div><div class="top-plays">${prvPct}%</div></div>`;
+          <div class="top-item"><div class="top-name" style="color:var(--text-secondary);">${escapeHTML(I18N.t('admin.avgPlays'))}</div><div class="top-plays">${avg}</div></div>
+          <div class="top-item"><div class="top-name" style="color:var(--text-secondary);">${escapeHTML(I18N.t('admin.publicShare'))}</div><div class="top-plays">${pubPct}%</div></div>
+          <div class="top-item"><div class="top-name" style="color:var(--text-secondary);">${escapeHTML(I18N.t('admin.privateShare'))}</div><div class="top-plays">${prvPct}%</div></div>`;
         $('#top-section').style.display = 'grid';
       } catch (err) {
         console.error('Stats xatolik:', err.message);
@@ -113,13 +127,13 @@
       $('#table-body').innerHTML = `
         <div class="table-loading">
           <div class="loading-spinner"></div>
-          <div>Yuklanmoqda...</div>
+          <div>${escapeHTML(I18N.t('admin.loading'))}</div>
         </div>`;
       try {
         this.state.games = await api.get('/api/admin/games');
         this.renderTable();
       } catch (err) {
-        $('#table-body').innerHTML = `<div class="table-empty">Xatolik: ${escapeHTML(err.message)}</div>`;
+        $('#table-body').innerHTML = `<div class="table-empty">${escapeHTML(I18N.t('admin.errorPrefix'))}: ${escapeHTML(err.message)}</div>`;
       }
     },
 
@@ -139,30 +153,32 @@
 
       const tbody = $('#table-body');
       if (games.length === 0) {
-        tbody.innerHTML = `<div class="table-empty">O'yin topilmadi</div>`;
+        tbody.innerHTML = `<div class="table-empty">${escapeHTML(I18N.t('admin.gameNotFound'))}</div>`;
         return;
       }
 
       tbody.innerHTML = `
         <div class="games-table-row header-row">
           <div></div>
-          <div>Nomi</div>
-          <div>Status</div>
-          <div class="col-plays">O'ynash</div>
-          <div class="col-date">Sana</div>
+          <div>${escapeHTML(I18N.t('admin.tableName'))}</div>
+          <div>${escapeHTML(I18N.t('admin.tableStatus'))}</div>
+          <div class="col-plays">${escapeHTML(I18N.t('admin.tablePlays'))}</div>
+          <div class="col-date">${escapeHTML(I18N.t('admin.tableDate'))}</div>
           <div></div>
-          <div style="text-align:right;">Amallar</div>
+          <div style="text-align:right;">${escapeHTML(I18N.t('admin.tableActions'))}</div>
         </div>
         ${games.map((g) => this.rowHtml(g)).join('')}`;
     },
 
     rowHtml(g) {
-      const name = g.name ? (g.name.uz || g.name.en || g.id) : g.id;
-      const date = g.createdAt ? new Date(g.createdAt).toLocaleDateString('uz-UZ') : '—';
+      const name = I18N.localize(g.name) || g.id;
+      const date = g.createdAt ? new Date(g.createdAt).toLocaleDateString(I18N.getLang() === 'uz' ? 'uz-UZ' : I18N.getLang()) : '—';
       const thumb = g.thumbnail ? `<img src="games/${escapeHTML(g.folder)}/${escapeHTML(g.thumbnail)}" alt="">` : '🎮';
       const playLink = g.isPrivate && g.privateToken
         ? `play.html?token=${escapeHTML(g.privateToken)}`
         : `play.html?game=${escapeHTML(g.id)}`;
+      const statusLabel = g.isPrivate ? I18N.t('admin.privateLabel') : I18N.t('admin.publicLabel');
+      const toggleLabel = g.isPrivate ? I18N.t('admin.makePublic') : I18N.t('admin.makePrivate');
       return `
         <div class="games-table-row" data-id="${escapeHTML(g.id)}">
           <div class="row-thumb">${thumb}</div>
@@ -172,16 +188,16 @@
           </div>
           <div>
             <span class="row-badge ${g.isPrivate ? 'private' : 'public'}">
-              ${g.isPrivate ? '🔒 Private' : '🌐 Public'}
+              ${escapeHTML(statusLabel)}
             </span>
           </div>
           <div class="row-plays">▶ ${g.playCount || 0}</div>
-          <div class="row-date">${date}</div>
+          <div class="row-date">${escapeHTML(date)}</div>
           <div></div>
           <div class="row-actions">
-            <a href="${playLink}" target="_blank" class="row-action-btn play">▶ O'ynash</a>
+            <a href="${playLink}" target="_blank" class="row-action-btn play">${escapeHTML(I18N.t('admin.tablePlay'))}</a>
             <button class="row-action-btn toggle" data-action="toggle" data-id="${escapeHTML(g.id)}" data-private="${g.isPrivate}">
-              ${g.isPrivate ? '🌐 Public' : '🔒 Private'}
+              ${escapeHTML(toggleLabel)}
             </button>
             <button class="row-action-btn del" data-action="delete" data-id="${escapeHTML(g.id)}" data-name="${escapeHTML(name)}">🗑️</button>
           </div>
@@ -195,7 +211,7 @@
         const { action, id, name, private: isPrivate } = btn.dataset;
         if (action === 'delete') {
           this.state.pendingDeleteId = id;
-          $('#confirm-text').textContent = `"${name}" o'yinini o'chirmoqchimisiz? Bu amalni qaytarib bo'lmaydi.`;
+          $('#confirm-text').textContent = I18N.t('admin.deleteSpecConfirm', { name });
           $('#confirm-overlay').classList.add('visible');
         } else if (action === 'toggle') {
           this.togglePrivacy(id, isPrivate === 'true');
@@ -231,7 +247,7 @@
         $('#confirm-overlay').classList.remove('visible');
         try {
           await api.delete('/api/admin/games/' + id);
-          toast("O'yin o'chirildi", 'success');
+          toast(I18N.t('admin.toastDeleted'), 'success');
           await this.loadGames();
           await this.loadStats();
         } catch (err) {
@@ -243,7 +259,7 @@
     async togglePrivacy(id, currentlyPrivate) {
       try {
         await api.patch('/api/admin/games/' + id, { isPrivate: !currentlyPrivate });
-        toast(currentlyPrivate ? 'Public qilindi' : 'Private qilindi');
+        toast(currentlyPrivate ? I18N.t('admin.toastMadePublic') : I18N.t('admin.toastMadePrivate'));
         await this.loadGames();
         await this.loadStats();
       } catch (err) {
@@ -253,12 +269,12 @@
 
     async deleteAll() {
       const count = this.state.games.length;
-      if (count === 0) return toast("O'yinlar yo'q", 'error');
-      if (!confirm(`⚠️ BARCHA ${count} ta o'yinni o'chirasizmi? Bu amalni qaytarib bo'lmaydi!`)) return;
-      if (!confirm(`🔴 Tasdiqlang: ${count} ta o'yin va barcha fayllar O'CHIRILADI!`)) return;
+      if (count === 0) return toast(I18N.t('admin.deleteAllNoGames'), 'error');
+      if (!confirm(I18N.t('admin.deleteAllConfirm1', { n: count }))) return;
+      if (!confirm(I18N.t('admin.deleteAllConfirm2', { n: count }))) return;
       try {
         const data = await api.delete('/api/admin/games');
-        toast(`✅ ${data.deleted} ta o'yin o'chirildi`, 'success');
+        toast(I18N.t('admin.deleteAllSuccess', { n: data.deleted }), 'success');
         this.loadStats();
         this.loadGames();
         this.loadStorage();
@@ -270,7 +286,7 @@
     // ─── Storage ───
     async loadStorage() {
       const el = $('#storage-body');
-      el.innerHTML = '<div class="table-loading"><div class="loading-spinner"></div><div>Yuklanmoqda...</div></div>';
+      el.innerHTML = `<div class="table-loading"><div class="loading-spinner"></div><div>${escapeHTML(I18N.t('admin.loading'))}</div></div>`;
       try {
         const data = await api.get('/api/admin/storage');
         el.innerHTML = `
@@ -280,13 +296,13 @@
           </div>
           <div class="storage-tree">${this.renderTree(data.tree, data.dataDir)}</div>`;
       } catch (err) {
-        el.innerHTML = `<div style="color:#ef4444;padding:8px;">Xatolik: ${escapeHTML(err.message)}</div>`;
+        el.innerHTML = `<div style="color:#ef4444;padding:8px;">${escapeHTML(I18N.t('admin.errorPrefix'))}: ${escapeHTML(err.message)}</div>`;
       }
     },
 
     renderTree(nodes, base) {
       if (!nodes || nodes.length === 0) {
-        return '<div style="color:var(--text-muted);font-size:var(--font-xs);">Bo\'sh</div>';
+        return `<div style="color:var(--text-muted);font-size:var(--font-xs);">${escapeHTML(I18N.t('admin.empty'))}</div>`;
       }
       return nodes.map((node) => {
         const fullPath = base + '/' + node.name;
@@ -296,7 +312,7 @@
             <span class="storage-icon">${isDir ? '📁' : '📄'}</span>
             <span class="storage-name ${isDir ? 'dir' : ''}">${escapeHTML(node.name)}</span>
             <span class="storage-size">${escapeHTML(node.sizeHuman)}</span>
-            <button class="storage-del" data-storage-target="${escapeHTML(fullPath)}" data-storage-name="${escapeHTML(node.name)}">🗑️ O'chir</button>
+            <button class="storage-del" data-storage-target="${escapeHTML(fullPath)}" data-storage-name="${escapeHTML(node.name)}">${escapeHTML(I18N.t('admin.deleteFile'))}</button>
           </div>
           ${isDir && node.children && node.children.length
             ? `<div class="storage-children">${this.renderTree(node.children, fullPath)}</div>`
@@ -358,10 +374,10 @@
     if (!btn) return;
     const target = btn.dataset.storageTarget;
     const name = btn.dataset.storageName;
-    if (!confirm(`"${name}" ni o'chirishni xohlaysizmi?`)) return;
+    if (!confirm(I18N.t('admin.confirmDeleteFile', { name }))) return;
     try {
       await api.delete('/api/admin/storage', { target });
-      toast(`"${name}" o'chirildi`, 'success');
+      toast(I18N.t('admin.toastDeletedFile', { name }), 'success');
       Admin.loadStorage();
     } catch (err) {
       toast(err.message, 'error');

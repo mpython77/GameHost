@@ -26,6 +26,9 @@ const { GamesService } = require('./services/games.service');
 const { UploadService } = require('./services/upload.service');
 const { QRService } = require('./services/qr.service');
 const { StorageService } = require('./services/storage.service');
+const { AnalyticsService } = require('./services/analytics.service');
+const { SseTicketService } = require('./services/sse-ticket.service');
+const { EventBus } = require('./lib/event-bus');
 
 const { cors } = require('./middleware/cors');
 const { noCacheApi } = require('./middleware/no-cache');
@@ -54,15 +57,25 @@ function createApp() {
   // Re-sync legacy config (in case migrations changed DB contents)
   db._syncLegacyConfig();
 
+  // Central event bus — published to by services, consumed by analytics
+  // and the SSE route. Construct BEFORE services so they can take a ref.
+  const bus = new EventBus();
+
   const tokens = new TokenService({
     secret: adminSecret,
     ttlMs: config.ADMIN_TOKEN_TTL_MS,
     denylistFile: config.TOKEN_DENYLIST_FILE,
   });
-  const games = new GamesService(db);
-  const uploads = new UploadService(games);
+  const sseTickets = new SseTicketService();
+  const games = new GamesService(db, bus);
+  const uploads = new UploadService(games, bus);
   const qr = new QRService();
   const storage = new StorageService();
+  const analytics = new AnalyticsService({
+    logFile: config.EVENTS_LOG_FILE,
+    bus,
+    games,
+  });
 
   // ─── Express app ───
   const app = express();
@@ -72,12 +85,14 @@ function createApp() {
   // Middleware (global)
   app.use(requestContext);
 
-  // Compression — skip already-compressed binary types so we don't waste
-  // CPU re-compressing PNG/JPG/WASM/etc. that ship in Cocos game bundles.
+  // Compression — skip already-compressed binary types AND text/event-stream
+  // (SSE must NOT be buffered/compressed; the threshold accumulator would
+  // delay real-time event delivery to subscribers).
   app.use(compression({
     filter: (req, res) => {
       const type = res.getHeader('Content-Type') || '';
       const tStr = Array.isArray(type) ? type.join(' ') : String(type);
+      if (/^text\/event-stream/i.test(tStr)) return false;
       if (/^(image|audio|video)\//i.test(tStr)) return false;
       if (/application\/(zip|wasm|octet-stream|x-protobuf)/i.test(tStr)) return false;
       return compression.filter(req, res);
@@ -95,7 +110,8 @@ function createApp() {
         'default-src': ["'self'"],
         // Inline <style> and <script> are used heavily by the page-level
         // anti-flash gates; keep them allowed.
-        'script-src':  ["'self'", "'unsafe-inline'"],
+        // Chart.js is loaded on-demand from cdn.jsdelivr.net (admin only).
+        'script-src':  ["'self'", "'unsafe-inline'", 'https://cdn.jsdelivr.net'],
         'style-src':   ["'self'", "'unsafe-inline'"],
         'img-src':     ["'self'", 'data:', 'blob:'],
         'font-src':    ["'self'", 'data:'],
@@ -120,7 +136,7 @@ function createApp() {
   app.use('/api', noCacheApi);
 
   // Mount API routes
-  const deps = { games, uploads, tokens, qr, storage };
+  const deps = { games, uploads, tokens, qr, storage, bus, sseTickets, analytics };
   app.use('/api', buildApiRouter(deps));
 
   // Static: game files (cache disabled — uploads can be replaced)

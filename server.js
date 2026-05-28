@@ -32,6 +32,16 @@ const server = app.listen(config.PORT, '0.0.0.0', () => {
   console.log(banner);
 });
 
+// Mitigate slow-loris and hung-connection style attacks. Default Node
+// HTTP server has no timeout — a single TCP socket can stay open
+// indefinitely consuming resources.
+//   keepAliveTimeout — close idle keep-alive sockets after 65s
+//   headersTimeout   — must be > keepAliveTimeout (Node guidance)
+//   requestTimeout   — full-request budget (uploads can be slow → 5min)
+server.keepAliveTimeout = 65 * 1000;
+server.headersTimeout = 70 * 1000;
+server.requestTimeout = 5 * 60 * 1000;
+
 // In rare cases the listen callback never fires (port in use). Surface that.
 server.on('error', (err) => {
   logger.fatal('listen.error', { error: err.message, code: err.code, port: config.PORT });
@@ -48,6 +58,12 @@ function shutdown(signal) {
     }
     if (app.locals.deps && app.locals.deps.tokens && typeof app.locals.deps.tokens.close === 'function') {
       app.locals.deps.tokens.close();
+    }
+    if (app.locals.deps && app.locals.deps.analytics && typeof app.locals.deps.analytics.close === 'function') {
+      app.locals.deps.analytics.close();
+    }
+    if (app.locals.deps && app.locals.deps.sseTickets && typeof app.locals.deps.sseTickets.close === 'function') {
+      app.locals.deps.sseTickets.close();
     }
   } catch (err) {
     logger.warn('shutdown.flush_failed', { error: err.message });

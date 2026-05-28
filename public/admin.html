@@ -7,37 +7,6 @@
   <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>⚙️</text></svg>">
   <link rel="stylesheet" href="css/style.css">
   <link rel="stylesheet" href="css/admin.css">
-
-  <!-- Anti-flash: hide UI while we verify a stored token. Without this,
-       returning logged-in users briefly see the login form before being
-       sent to the dashboard. -->
-  <style>
-    html.gh-auth-loading body { visibility: hidden; }
-    html.gh-auth-loading::before {
-      content: '';
-      position: fixed; top: 0; left: 0; right: 0;
-      height: 2px; z-index: 9999;
-      background: linear-gradient(90deg,
-        transparent 0%, #7c3aed 30%, #a78bfa 50%, #7c3aed 70%, transparent 100%);
-      animation: gh-bar 1.1s ease-in-out infinite;
-    }
-    @keyframes gh-bar {
-      0% { transform: translateX(-30%); opacity: 0.6; }
-      50% { opacity: 1; }
-      100% { transform: translateX(30%); opacity: 0.6; }
-    }
-  </style>
-  <script>
-    /* Hide page only when we have a token to verify. Anonymous users
-       (no token) see the login form immediately — no flash. */
-    (function () {
-      try {
-        if (sessionStorage.getItem('gamehost_admin_token')) {
-          document.documentElement.classList.add('gh-auth-loading');
-        }
-      } catch (e) { /* sessionStorage blocked → render normally */ }
-    })();
-  </script>
 </head>
 <body class="admin-body">
 
@@ -47,27 +16,34 @@
   <div class="login-card">
     <div class="login-logo">
       <span class="login-logo-icon">⚙️</span>
-      <div class="login-title">Admin Panel</div>
-      <div class="login-subtitle">GameHost boshqaruv tizimi</div>
+      <div class="login-title" data-i18n="admin.title">Admin Panel</div>
+      <div class="login-subtitle" data-i18n="admin.subtitle">GameHost boshqaruv tizimi</div>
     </div>
     <form class="login-form" id="login-form" autocomplete="off">
       <div>
-        <label class="login-label">Login</label>
+        <label class="login-label" data-i18n="admin.login">Login</label>
         <input type="text" class="login-input" id="admin-username"
                placeholder="admin" autocomplete="username" required>
       </div>
       <div>
-        <label class="login-label">Parol</label>
+        <label class="login-label" data-i18n="admin.password">Parol</label>
         <input type="password" class="login-input" id="admin-password"
                placeholder="••••••••" autocomplete="current-password" required>
       </div>
       <div class="login-error" id="login-error"></div>
       <button type="submit" class="login-btn" id="login-btn">
-        <span id="login-btn-text">Kirish</span>
+        <span id="login-btn-text" data-i18n="admin.loginBtn">Kirish</span>
       </button>
     </form>
     <div style="text-align:center;margin-top:var(--space-md);">
-      <a href="index.html" style="font-size:var(--font-xs);color:var(--text-muted);">← Asosiy sahifaga qaytish</a>
+      <a href="index.html" data-i18n="admin.backToHome" style="font-size:var(--font-xs);color:var(--text-muted);">← Asosiy sahifaga qaytish</a>
+    </div>
+    <div style="text-align:center;margin-top:var(--space-md);">
+      <div class="lang-switcher" style="display:inline-flex;">
+        <button class="lang-btn active" data-lang="uz">UZ</button>
+        <button class="lang-btn" data-lang="ru">RU</button>
+        <button class="lang-btn" data-lang="en">EN</button>
+      </div>
     </div>
   </div>
 </div>
@@ -79,14 +55,19 @@
       <div class="admin-logo">
         <span>GameHost</span>
         <span style="color:var(--text-muted);font-weight:400;">/</span>
-        <span style="color:var(--text-primary);">Admin</span>
+        <span style="color:var(--text-primary);" data-i18n="admin.title">Admin</span>
       </div>
       <span class="admin-badge">⚙️ Admin</span>
     </div>
     <div class="admin-header-right">
-      <a href="index.html" class="admin-btn">🏠 Sayt</a>
-      <a href="upload.html" class="admin-btn">📤 Upload</a>
-      <button class="admin-btn danger" id="logout-btn">🚪 Chiqish</button>
+      <div class="lang-switcher">
+        <button class="lang-btn active" data-lang="uz">UZ</button>
+        <button class="lang-btn" data-lang="ru">RU</button>
+        <button class="lang-btn" data-lang="en">EN</button>
+      </div>
+      <a href="index.html" class="admin-btn" data-i18n="admin.site">🏠 Sayt</a>
+      <a href="upload.html" class="admin-btn" data-i18n="admin.uploadNav">📤 Upload</a>
+      <button class="admin-btn danger" id="logout-btn" data-i18n="admin.logout">🚪 Chiqish</button>
     </div>
   </header>
 
@@ -96,66 +77,130 @@
       <div class="stat-card purple">
         <div class="stat-icon">🎮</div>
         <div class="stat-value" id="stat-total">—</div>
-        <div class="stat-label">Jami o'yinlar</div>
+        <div class="stat-label" data-i18n="admin.statsTotal">Jami o'yinlar</div>
       </div>
       <div class="stat-card green">
         <div class="stat-icon">🌐</div>
         <div class="stat-value" id="stat-public">—</div>
-        <div class="stat-label">Public</div>
+        <div class="stat-label" data-i18n="admin.statsPublic">Public</div>
       </div>
       <div class="stat-card orange">
         <div class="stat-icon">🔒</div>
         <div class="stat-value" id="stat-private">—</div>
-        <div class="stat-label">Private</div>
+        <div class="stat-label" data-i18n="admin.statsPrivate">Private</div>
       </div>
       <div class="stat-card cyan">
         <div class="stat-icon">▶️</div>
         <div class="stat-value" id="stat-plays">—</div>
-        <div class="stat-label">Jami o'ynashlar</div>
+        <div class="stat-label" data-i18n="admin.statsPlays">Jami o'ynashlar</div>
       </div>
     </div>
 
     <div class="table-section">
       <div class="table-header">
-        <div class="table-title">🎮 Barcha o'yinlar</div>
-        <button class="admin-btn danger" id="delete-all-btn" style="margin-left:auto;">🗑️ Delete All</button>
+        <div class="table-title" data-i18n="admin.allGames">🎮 Barcha o'yinlar</div>
+        <button class="admin-btn danger" id="delete-all-btn" data-i18n="admin.deleteAll" style="margin-left:auto;">🗑️ Hammasini o'chir</button>
         <div class="table-search">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
-          <input type="text" id="table-search" placeholder="Qidirish...">
+          <input type="text" id="table-search" data-i18n="admin.search" placeholder="Qidirish...">
         </div>
         <div class="table-filters">
-          <button class="table-filter-btn active" data-filter="all">Barchasi</button>
-          <button class="table-filter-btn" data-filter="public">Public</button>
-          <button class="table-filter-btn" data-filter="private">Private</button>
+          <button class="table-filter-btn active" data-filter="all" data-i18n="admin.filterAll">Barchasi</button>
+          <button class="table-filter-btn" data-filter="public" data-i18n="admin.filterPublic">Public</button>
+          <button class="table-filter-btn" data-filter="private" data-i18n="admin.filterPrivate">Private</button>
         </div>
       </div>
 
       <div id="table-body">
         <div class="table-loading">
           <div class="loading-spinner"></div>
-          <div>Yuklanmoqda...</div>
+          <div data-i18n="admin.loading">Yuklanmoqda...</div>
         </div>
       </div>
     </div>
 
     <div class="top-section" id="top-section" style="display:none;">
       <div class="top-card">
-        <div class="top-card-title">🏆 Eng ko'p o'ynalgan</div>
+        <div class="top-card-title" data-i18n="admin.topGames">🏆 Eng ko'p o'ynalgan</div>
         <div id="top-games-list"></div>
       </div>
       <div class="top-card">
-        <div class="top-card-title">📊 Tezkor statistika</div>
+        <div class="top-card-title" data-i18n="admin.quickStats">📊 Tezkor statistika</div>
         <div id="quick-stats"></div>
       </div>
     </div>
 
+    <!-- ═══ Analytics dashboard ═══ -->
+    <section class="analytics-section" id="analytics-section">
+      <div class="analytics-header">
+        <h2 class="analytics-title" data-i18n="analytics.title">📈 Analitika</h2>
+        <div class="analytics-range" id="analytics-range">
+          <button class="range-btn" data-days="7"  data-i18n="analytics.range7d">7 kun</button>
+          <button class="range-btn active" data-days="30" data-i18n="analytics.range30d">30 kun</button>
+          <button class="range-btn" data-days="90" data-i18n="analytics.range90d">90 kun</button>
+        </div>
+      </div>
+
+      <div class="analytics-summary" id="analytics-summary">
+        <div class="analytics-stat">
+          <div class="analytics-stat-label" data-i18n="analytics.rangePlays">Davr o'ynashlari</div>
+          <div class="analytics-stat-value" id="an-range-plays">—</div>
+        </div>
+        <div class="analytics-stat">
+          <div class="analytics-stat-label" data-i18n="analytics.rangeUploads">Davr yuklashlari</div>
+          <div class="analytics-stat-value" id="an-range-uploads">—</div>
+        </div>
+        <div class="analytics-stat">
+          <div class="analytics-stat-label" data-i18n="analytics.allTimePlays">Hammavaqt o'ynashlari</div>
+          <div class="analytics-stat-value" id="an-all-plays">—</div>
+        </div>
+        <div class="analytics-stat">
+          <div class="analytics-stat-label" data-i18n="analytics.connection">Live ulanish</div>
+          <div class="analytics-stat-value" id="an-sse-status">
+            <span class="sse-dot disconnected" id="sse-dot"></span>
+            <span id="sse-label" data-i18n="analytics.sseConnecting">Ulanmoqda...</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="analytics-grid">
+        <div class="chart-card chart-large">
+          <div class="chart-card-title" data-i18n="analytics.activityChart">Faollik (har kunlik)</div>
+          <div class="chart-canvas-wrap">
+            <canvas id="chart-activity"></canvas>
+          </div>
+        </div>
+
+        <div class="chart-card">
+          <div class="chart-card-title" data-i18n="analytics.privacyChart">Public / Private</div>
+          <div class="chart-canvas-wrap">
+            <canvas id="chart-privacy"></canvas>
+          </div>
+        </div>
+
+        <div class="chart-card">
+          <div class="chart-card-title" data-i18n="analytics.categoryChart">Kategoriyalar</div>
+          <div class="chart-canvas-wrap">
+            <canvas id="chart-category"></canvas>
+          </div>
+        </div>
+
+        <div class="chart-card chart-large">
+          <div class="chart-card-title" data-i18n="analytics.topGamesChart">Top o'yinlar</div>
+          <div class="chart-canvas-wrap">
+            <canvas id="chart-top"></canvas>
+          </div>
+        </div>
+      </div>
+    </section>
+
     <div class="table-section" id="storage-section" style="margin-top:var(--space-xl);">
       <div class="table-header">
-        <div class="table-title">💾 Storage Manager</div>
-        <button class="admin-btn" id="storage-refresh-btn">🔄 Yangilash</button>
+        <div class="table-title" data-i18n="admin.storage">💾 Storage Manager</div>
+        <button class="admin-btn" id="storage-refresh-btn" data-i18n="admin.refresh">🔄 Yangilash</button>
       </div>
       <div id="storage-body" style="padding:var(--space-lg);">
-        <div class="table-loading"><div class="loading-spinner"></div><div>Yuklanmoqda...</div></div>
+        <div class="table-loading"><div class="loading-spinner"></div><div data-i18n="admin.loading">Yuklanmoqda...</div></div>
       </div>
     </div>
 
@@ -165,20 +210,24 @@
 <div class="confirm-overlay" id="confirm-overlay">
   <div class="confirm-box">
     <div class="confirm-icon">🗑️</div>
-    <div class="confirm-title">O'yinni o'chirish</div>
-    <div class="confirm-text" id="confirm-text">Rostdan ham bu o'yinni o'chirishni xohlaysizmi?</div>
+    <div class="confirm-title" data-i18n="admin.confirmTitle">O'yinni o'chirish</div>
+    <div class="confirm-text" id="confirm-text" data-i18n="admin.confirmText">Rostdan ham bu o'yinni o'chirishni xohlaysizmi?</div>
     <div class="confirm-actions">
-      <button class="confirm-cancel" id="confirm-cancel">Bekor qilish</button>
-      <button class="confirm-delete" id="confirm-ok">O'chirish</button>
+      <button class="confirm-cancel" id="confirm-cancel" data-i18n="admin.confirmCancel">Bekor qilish</button>
+      <button class="confirm-delete" id="confirm-ok" data-i18n="admin.confirmDelete">O'chirish</button>
     </div>
   </div>
 </div>
 
+<script src="js/i18n.js"></script>
 <script src="js/lib/util.js"></script>
 <script src="js/lib/escape.js"></script>
 <script src="js/lib/toast.js"></script>
 <script src="js/lib/auth.js"></script>
 <script src="js/lib/api.js"></script>
+<script src="js/lib/sse.js"></script>
+<script src="js/lib/charts.js"></script>
 <script src="js/pages/admin.js"></script>
+<script src="js/pages/admin-analytics.js"></script>
 </body>
 </html>

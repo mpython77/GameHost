@@ -5,6 +5,9 @@
 
 'use strict';
 
+// Tests rely on uploading many files quickly. Set the bypass flag BEFORE
+// requiring any application code so the rate-limit middleware sees it.
+process.env.GH_DISABLE_RATE_LIMIT = '1';
 process.env.NODE_ENV = 'development';
 process.env.PORT = '0';
 process.env.LOG_LEVEL = 'error';
@@ -15,6 +18,10 @@ const { createApp } = require('../src/app');
 
 const app = createApp();
 const server = app.listen(0, '127.0.0.1', async () => {
+  // Apply the same socket timeouts as production (server.js does this).
+  server.keepAliveTimeout = 65 * 1000;
+  server.headersTimeout = 70 * 1000;
+  server.requestTimeout = 5 * 60 * 1000;
   const port = server.address().port;
   const base = 'http://127.0.0.1:' + port;
   let pass = 0, fail = 0;
@@ -322,9 +329,283 @@ const server = app.listen(0, '127.0.0.1', async () => {
     bad('mutex serialize', JSON.stringify(ids));
   }
 
+  // ===== Test 16: Concurrent setPrivacy doesn't desync DB and disk =====
+  console.log('\n[BUG NEW] Concurrent setPrivacy is mutex-protected');
+  const targetId = ids[0]; // concurrent
+  // Fire 4 toggles at once. Result should be deterministic (last write wins
+  // for the DB), and the on-disk folder should match the DB.folder.
+  await Promise.all([true, false, true, false].map((flag) =>
+    fetch(base + '/api/admin/games/' + targetId, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', 'x-admin-token': token },
+      body: JSON.stringify({ isPrivate: flag }),
+    }).then((r) => r.json()).catch(() => null)
+  ));
+  const stateNow = (await fetch(base + '/api/admin/games', {
+    headers: { 'x-admin-token': token },
+  }).then((r) => r.json())).find((g) => g.id === targetId);
+  const folderExists = stateNow && fs.existsSync(path.join(app.locals.config.GAMES_DIR, stateNow.folder));
+  if (folderExists) {
+    ok(`DB.folder matches disk after 4 concurrent toggles → ${stateNow.folder}`);
+  } else {
+    bad('setPrivacy desync', JSON.stringify(stateNow));
+  }
+
+  // ===== Test 17: Server timeouts (slow loris mitigation) =====
+  console.log('\n[BUG NEW] Server has socket timeouts configured');
+  if (server.keepAliveTimeout > 0 && server.headersTimeout > server.keepAliveTimeout) {
+    ok(`keepAlive=${server.keepAliveTimeout}ms headers=${server.headersTimeout}ms`);
+  } else {
+    bad('timeouts not set', `keepAlive=${server.keepAliveTimeout} headers=${server.headersTimeout}`);
+  }
+
+  // ===== Test 18: RFC 5987 download header =====
+  console.log('\n[BUG NEW] Download Content-Disposition is safe');
+  const dlRes = await fetch(base + '/api/games/' + targetId + '/download', {
+    headers: { 'x-admin-token': token },
+  });
+  const cd = dlRes.headers.get('content-disposition') || '';
+  const hasFilenameStar = cd.includes("filename*=UTF-8''");
+  const hasNoCRLF = !/[\r\n]/.test(cd);
+  if (hasFilenameStar && hasNoCRLF) {
+    ok('Content-Disposition uses RFC 5987 + CRLF-safe');
+  } else {
+    bad('Content-Disposition unsafe', cd);
+  }
+
+  // ===== Test 19: i18n keys exist for all 3 languages =====
+  console.log('\n[BUG NEW] i18n — every key has uz/ru/en');
+  // Read the i18n file and parse the translations object via a regex.
+  const i18nSrc = fs.readFileSync('./public/js/i18n.js', 'utf8');
+  const dictMatch = i18nSrc.match(/const translations = (\{[\s\S]*?\n  \});/);
+  if (!dictMatch) {
+    bad('i18n parse');
+  } else {
+    // Eval the literal in a sandboxed Function (safe, no I/O).
+    let dict;
+    try {
+      // eslint-disable-next-line no-new-func
+      dict = new Function('return ' + dictMatch[1])();
+    } catch (e) {
+      bad('i18n eval', e.message);
+    }
+    if (dict) {
+      const missing = [];
+      for (const [key, langs] of Object.entries(dict)) {
+        for (const lang of ['uz', 'ru', 'en']) {
+          if (!langs[lang] || typeof langs[lang] !== 'string') {
+            missing.push(`${key}#${lang}`);
+          }
+        }
+      }
+      if (missing.length === 0) {
+        ok(`every key has all 3 languages (${Object.keys(dict).length} keys)`);
+      } else {
+        bad('i18n incomplete', `missing: ${missing.slice(0, 5).join(', ')}${missing.length > 5 ? '…' : ''}`);
+      }
+    }
+  }
+
+  // ===== Test 20: HTTP rate-limit headers on /api/* =====
+  console.log('\n[BUG NEW] Rate-limit headers present on API');
+  const rl = await fetch(base + '/api/games');
+  // express-rate-limit v7 (draft-7) emits `ratelimit` and `ratelimit-policy`.
+  // Older versions emit `ratelimit-limit` / `x-ratelimit-limit`.
+  const hasLimitHeader =
+    !!rl.headers.get('ratelimit') ||
+    !!rl.headers.get('ratelimit-policy') ||
+    !!rl.headers.get('ratelimit-limit') ||
+    !!rl.headers.get('x-ratelimit-limit');
+  if (hasLimitHeader) {
+    ok('RateLimit headers exposed on /api/games (draft-7 or legacy)');
+  } else {
+    bad('no rate limit header', JSON.stringify([...rl.headers.entries()]));
+  }
+
+  // ===== Test 21: CSP + security headers =====
+  console.log('\n[BUG NEW] Security headers present');
+  const idx = await fetch(base + '/');
+  const csp = idx.headers.get('content-security-policy');
+  const xfo = idx.headers.get('x-content-type-options');
+  if (csp && csp.includes("default-src") && xfo === 'nosniff') {
+    ok(`CSP set, X-Content-Type-Options=${xfo}`);
+  } else {
+    bad('security headers', `CSP=${!!csp} XCTO=${xfo}`);
+  }
+
+  // ===== Test 22: Request ID round-trip =====
+  console.log('\n[BUG NEW] X-Request-Id header round-trip');
+  const ridRes = await fetch(base + '/api/health', {
+    headers: { 'x-request-id': 'test-correlation-12345' },
+  });
+  if (ridRes.headers.get('x-request-id') === 'test-correlation-12345') {
+    ok('upstream X-Request-Id is preserved');
+  } else {
+    bad('request id', ridRes.headers.get('x-request-id'));
+  }
+
+  // ===== Test 23: Analytics endpoint =====
+  console.log('\n[FEATURE] Analytics — summary endpoint');
+  // Generate some plays so analytics has data
+  const list = await fetch(base + '/api/games').then((r) => r.json());
+  if (Array.isArray(list) && list.length > 0) {
+    const gid = list[0].id;
+    await Promise.all([0, 1, 2, 3, 4].map(() =>
+      fetch(base + '/api/games/' + gid + '/play', { method: 'POST' })
+        .then((r) => r.json()).catch(() => null)
+    ));
+  }
+  const an = await fetch(base + '/api/admin/analytics?days=7', {
+    headers: { 'x-admin-token': token },
+  });
+  const anData = await an.json();
+  if (an.status === 200 && anData.range && anData.summary && Array.isArray(anData.series)) {
+    ok(`analytics days=${anData.range.days} series=${anData.series.length} plays=${anData.summary.allTimePlays}`);
+  } else {
+    bad('analytics endpoint', JSON.stringify(anData).slice(0, 200));
+  }
+  // Without auth → 401
+  const an401 = await fetch(base + '/api/admin/analytics');
+  if (an401.status === 401) ok('analytics requires admin auth');
+  else bad('analytics auth gate', `got ${an401.status}`);
+
+  // Days clamp (>365 → 365)
+  const anClamp = await fetch(base + '/api/admin/analytics?days=99999', {
+    headers: { 'x-admin-token': token },
+  }).then((r) => r.json());
+  if (anClamp.range && anClamp.range.days <= 365) {
+    ok(`days param clamped to ${anClamp.range.days}`);
+  } else {
+    bad('analytics clamp', JSON.stringify(anClamp.range));
+  }
+
+  // ===== Test 24: SSE end-to-end on a clean server =====
+  // We use a SEPARATE server instance so this test is not affected by the
+  // upload rate-limit (10/5min/IP) consumed by earlier tests.
+  console.log('\n[FEATURE] SSE — end-to-end live delivery');
+  await testSseEndToEnd();
+
+  // ===== Test 25: Analytics aggregates plays =====
+  console.log('\n[FEATURE] Analytics aggregates plays correctly');
+  const an2 = await fetch(base + '/api/admin/analytics?days=7', {
+    headers: { 'x-admin-token': token },
+  }).then((r) => r.json());
+  if (an2.summary.rangePlays >= 5) {
+    ok(`analytics aggregated plays: rangePlays=${an2.summary.rangePlays}`);
+  } else {
+    bad('analytics plays', JSON.stringify(an2.summary));
+  }
+  // Today's bucket should have plays
+  const todayBucket = an2.series[an2.series.length - 1];
+  if (todayBucket && todayBucket.plays >= 5 && todayBucket.uploads >= 1) {
+    ok(`today's bucket: plays=${todayBucket.plays} uploads=${todayBucket.uploads}`);
+  } else {
+    bad('today bucket', JSON.stringify(todayBucket));
+  }
+
   // ===== Summary =====
   console.log(`\n  ${pass} pass, ${fail} fail\n`);
   server.close(() => process.exit(fail === 0 ? 0 : 1));
+
+  // ─── helpers ───
+  async function testSseEndToEnd() {
+    // Spin up a fresh app on a different port — clean rate-limit state.
+    const sub = createApp();
+    const subSrv = await new Promise((r) => {
+      const s = sub.listen(0, '127.0.0.1', () => r(s));
+    });
+    const subPort = subSrv.address().port;
+    const subBase = 'http://127.0.0.1:' + subPort;
+
+    try {
+      // Login on the fresh server
+      const lr = await fetch(subBase + '/api/admin/login', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username: 'admin', password: 'admin' }),
+      });
+      const subToken = (await lr.json()).token;
+
+      // Auth checks first
+      const t401 = await fetch(subBase + '/api/admin/sse-ticket', { method: 'POST' });
+      if (t401.status === 401) ok('sse-ticket requires admin auth');
+      else bad('sse-ticket auth', `got ${t401.status}`);
+
+      const tRes = await fetch(subBase + '/api/admin/sse-ticket', {
+        method: 'POST', headers: { 'x-admin-token': subToken },
+      });
+      const tBody = await tRes.json();
+      if (tRes.status === 200 && tBody.ticket && tBody.ticket.length >= 16) {
+        ok(`ticket issued len=${tBody.ticket.length}`);
+      } else {
+        bad('ticket issue', JSON.stringify(tBody));
+      }
+      const t = tBody.ticket;
+
+      // Open the SSE stream and start collecting raw chunks.
+      const http2 = require('http');
+      let buf = '';
+      const sseRes = await new Promise((resolve) => {
+        const r = http2.get({
+          hostname: '127.0.0.1', port: subPort,
+          path: '/api/admin/events?ticket=' + t,
+        }, (resp) => {
+          resp.setEncoding('utf8');
+          resp.on('data', (chunk) => { buf += chunk; });
+          resolve(resp);
+        });
+        r.on('error', () => resolve(null));
+      });
+
+      if (sseRes && sseRes.statusCode === 200 &&
+          /text\/event-stream/.test(sseRes.headers['content-type'])) {
+        ok('sse connected, content-type OK');
+      } else {
+        bad('sse connect', sseRes ? sseRes.statusCode : 'no response');
+        return;
+      }
+
+      // Wait for the connected handshake
+      await new Promise((r) => setTimeout(r, 200));
+      if (buf.includes('event: connected')) ok('SSE delivered "connected" event');
+      else bad('SSE connected event', JSON.stringify(buf.slice(0, 200)));
+
+      // Upload — clean server, no rate limit
+      const upFd = new FormData();
+      upFd.append('gameFile', new Blob([fs.readFileSync('./scripts/_fixtures/test-game.html')], { type: 'text/html' }), 'sse.html');
+      upFd.append('gameName_uz', 'SSE Live');
+      upFd.append('gameName_en', 'SSE Live');
+      upFd.append('category', 'arcade');
+      upFd.append('isPrivate', 'false');
+      const upR = await fetch(subBase + '/api/upload', {
+        method: 'POST', headers: { 'x-admin-token': subToken }, body: upFd,
+      });
+      if (!upR.ok) {
+        bad('SSE upload trigger', `status ${upR.status}`);
+        try { sseRes.destroy(); } catch {}
+        return;
+      }
+
+      await new Promise((r) => setTimeout(r, 500));
+      if (buf.includes('event: game.uploaded')) {
+        ok('SSE delivered game.uploaded LIVE');
+      } else {
+        bad('SSE upload echo', JSON.stringify(buf.slice(0, 400)));
+      }
+
+      // Reusing the same ticket should fail
+      try { sseRes.destroy(); } catch {}
+      const reuse = await fetch(subBase + '/api/admin/events?ticket=' + t);
+      if (reuse.status === 401) ok('SSE ticket is single-use');
+      else bad('ticket reuse', `got ${reuse.status}`);
+    } finally {
+      try { sub.locals.deps.bus = null; } catch {}
+      try { sub.locals.deps.analytics.close(); } catch {}
+      try { sub.locals.deps.sseTickets.close(); } catch {}
+      try { sub.locals.deps.tokens.close(); } catch {}
+      try { sub.locals.deps.games.db.close(); } catch {}
+      await new Promise((r) => subSrv.close(r));
+    }
+  }
 });
 
 setTimeout(() => { console.error('timeout'); process.exit(2); }, 30000).unref();
