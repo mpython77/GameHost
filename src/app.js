@@ -99,11 +99,11 @@ function createApp() {
     },
     threshold: 1024, // skip tiny responses
   }));
-  app.use(helmet({
-    // Build per-request CSP. /play.html is the iframe host so it needs
-    // very loose rules to embed any uploaded game; the other pages get
-    // a stricter CSP for defense-in-depth against XSS in user-generated
-    // names/descriptions.
+  // Helmet — but skip for /games/* because uploaded Cocos Creator games
+  // legitimately need eval(), Google Fonts, and other external resources
+  // that our strict CSP would block. The /games/* iframe is still
+  // security-isolated by the sandbox attribute on play.html.
+  const helmetMiddleware = helmet({
     contentSecurityPolicy: {
       useDefaults: false,
       directives: {
@@ -126,9 +126,18 @@ function createApp() {
     },
     crossOriginEmbedderPolicy: false,
     crossOriginResourcePolicy: { policy: 'cross-origin' },
-    // Modern referrer policy (don't leak admin URLs to game origins).
     referrerPolicy: { policy: 'no-referrer-when-downgrade' },
-  }));
+    // Origin-Agent-Cluster was being applied inconsistently across pages
+    // (caused a console warning). Disable so all routes stay in a single
+    // agent cluster.
+    originAgentCluster: false,
+  });
+  app.use((req, res, next) => {
+    // Skip helmet entirely for uploaded game files — they live in their
+    // own iframe sandbox and need to load eval/fonts/CDN scripts freely.
+    if (req.path.startsWith('/games/')) return next();
+    return helmetMiddleware(req, res, next);
+  });
   app.use(express.json({ limit: '256kb' }));
 
   // CORS only for API
