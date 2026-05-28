@@ -16,24 +16,34 @@ const { ensureDir, rmRecursive } = require('../lib/files');
 const { extractSafe, ensureIndexHtmlAtRoot } = require('../lib/zip');
 const { slugify } = require('../lib/slugify');
 const { ValidationError } = require('../lib/errors');
+const { Mutex } = require('../lib/mutex');
 
 class UploadService {
   constructor(gamesService) {
     this.games = gamesService;
+    // Serialize uploads so concurrent ones don't race on the slug allocator
+    // or clobber each other's intermediate folder state.
+    this._mutex = new Mutex();
   }
 
   /**
-   * Process an upload.
-   *
-   * @param {object} input
-   * @param {object} input.fields  Validated text fields from the form
-   * @param {object} input.gameFile  Multer file { path, originalname, ... }
-   * @param {object|null} input.thumbnailFile
-   * @returns {object}  Persisted game record (privateToken stripped on caller side)
+   * Process an upload (mutex-protected — concurrent uploads serialize).
    */
-  async process({ fields, gameFile, thumbnailFile }) {
+  process(input) {
+    return this._mutex.run(() => this._processInner(input));
+  }
+
+  async _processInner({ fields, gameFile, thumbnailFile }) {
     if (!gameFile) {
       throw new ValidationError('Fayl yuklanmadi');
+    }
+
+    // Reject zero-byte uploads — they slip through fileFilter (which only
+    // checks ext/mimetype) and would create a broken game directory.
+    if (!gameFile.size || gameFile.size === 0) {
+      this._cleanupFile(gameFile.path);
+      this._cleanupFile(thumbnailFile?.path);
+      throw new ValidationError("Fayl bo'sh — ma'noli kontent yuklang");
     }
 
     const ext = path.extname(gameFile.originalname).toLowerCase();

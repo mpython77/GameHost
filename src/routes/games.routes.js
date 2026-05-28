@@ -47,7 +47,13 @@ function buildGamesRouter({ games, qr, tokens }) {
   // ─── Private game by token ───
   router.get('/private/:token', limits.privateToken, (req, res, next) => {
     try {
-      const game = games.getByPrivateToken(req.params.token);
+      // Reject obviously malformed tokens before doing a Map lookup.
+      // Tokens are 48 hex chars; pretend any other shape is "not found".
+      const t = req.params.token;
+      if (!/^[a-f0-9]{32,128}$/i.test(t)) {
+        return next(new (require('../lib/errors').NotFoundError)("Maxfiy o'yin topilmadi yoki token noto'g'ri"));
+      }
+      const game = games.getByPrivateToken(t);
       // Hide privateToken in response
       const { privateToken, ownerToken, ...safe } = game;
       res.json(safe);
@@ -65,9 +71,13 @@ function buildGamesRouter({ games, qr, tokens }) {
   // ─── QR code ───
   router.get('/:id/qr', maybeAdmin, async (req, res, next) => {
     try {
-      const game = games.getById(req.params.id);
-      if (game.isPrivate && !req.isAdmin) {
-        throw new UnauthorizedError("Maxfiy o'yin QR kodi uchun admin login kerak");
+      // Look up first; if not found OR is private without admin,
+      // return the SAME 404 to avoid leaking which private games exist.
+      // (Previously returned 401 for private, 404 for missing — that
+      // distinction let attackers probe for private slug names.)
+      const game = games.db.getById(req.params.id);
+      if (!game || (game.isPrivate && !req.isAdmin)) {
+        return next(new (require('../lib/errors').NotFoundError)("O'yin topilmadi"));
       }
       const baseUrl = config.PUBLIC_BASE_URL || `${req.protocol}://${req.get('host')}`;
       const url = game.isPrivate && game.privateToken

@@ -432,12 +432,13 @@ const I18N = (() => {
 
   /** Initialize i18n — load saved language */
   function init() {
-    const saved = localStorage.getItem(STORAGE_KEY);
+    let saved = null;
+    try { saved = localStorage.getItem(STORAGE_KEY); } catch { /* private mode */ }
     if (saved && SUPPORTED_LANGS.includes(saved)) {
       currentLang = saved;
     } else {
       // Auto-detect from browser
-      const browserLang = navigator.language.slice(0, 2).toLowerCase();
+      const browserLang = (navigator.language || 'uz').slice(0, 2).toLowerCase();
       if (SUPPORTED_LANGS.includes(browserLang)) {
         currentLang = browserLang;
       }
@@ -454,7 +455,7 @@ const I18N = (() => {
   function setLang(lang) {
     if (!SUPPORTED_LANGS.includes(lang)) return;
     currentLang = lang;
-    localStorage.setItem(STORAGE_KEY, lang);
+    try { localStorage.setItem(STORAGE_KEY, lang); } catch { /* private mode */ }
     applyTranslations();
     onChangeCallbacks.forEach(cb => cb(lang));
   }

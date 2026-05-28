@@ -18,6 +18,7 @@ const config = require('./config');
 const logger = require('./lib/logger');
 const { ensureDir } = require('./lib/files');
 const { loadOrCreateSecret } = require('./lib/secret-store');
+const { cleanOrphans } = require('./lib/cleanup');
 
 const { GamesDB } = require('./db/games-db');
 const { TokenService } = require('./services/token.service');
@@ -29,6 +30,7 @@ const { StorageService } = require('./services/storage.service');
 const { cors } = require('./middleware/cors');
 const { noCacheApi } = require('./middleware/no-cache');
 const { notFound, errorHandler } = require('./middleware/error-handler');
+const { requestContext } = require('./middleware/request-context');
 
 const { buildApiRouter } = require('./routes');
 const migrations = require('./migrations/legacy');
@@ -39,6 +41,9 @@ function createApp() {
   ensureDir(config.GAMES_DIR);
   ensureDir(config.UPLOADS_DIR);
   ensureDir(path.join(config.PUBLIC_DIR, 'js'));
+
+  // Clean orphan temp files left behind by a crash mid-upload
+  cleanOrphans(config.UPLOADS_DIR);
 
   // ─── Service container ───
   const adminSecret = loadOrCreateSecret(config.SECRET_FILE, config.ADMIN_SECRET_ENV);
@@ -65,11 +70,48 @@ function createApp() {
   app.disable('x-powered-by');
 
   // Middleware (global)
-  app.use(compression());
+  app.use(requestContext);
+
+  // Compression — skip already-compressed binary types so we don't waste
+  // CPU re-compressing PNG/JPG/WASM/etc. that ship in Cocos game bundles.
+  app.use(compression({
+    filter: (req, res) => {
+      const type = res.getHeader('Content-Type') || '';
+      const tStr = Array.isArray(type) ? type.join(' ') : String(type);
+      if (/^(image|audio|video)\//i.test(tStr)) return false;
+      if (/application\/(zip|wasm|octet-stream|x-protobuf)/i.test(tStr)) return false;
+      return compression.filter(req, res);
+    },
+    threshold: 1024, // skip tiny responses
+  }));
   app.use(helmet({
-    contentSecurityPolicy: false,
+    // Build per-request CSP. /play.html is the iframe host so it needs
+    // very loose rules to embed any uploaded game; the other pages get
+    // a stricter CSP for defense-in-depth against XSS in user-generated
+    // names/descriptions.
+    contentSecurityPolicy: {
+      useDefaults: false,
+      directives: {
+        'default-src': ["'self'"],
+        // Inline <style> and <script> are used heavily by the page-level
+        // anti-flash gates; keep them allowed.
+        'script-src':  ["'self'", "'unsafe-inline'"],
+        'style-src':   ["'self'", "'unsafe-inline'"],
+        'img-src':     ["'self'", 'data:', 'blob:'],
+        'font-src':    ["'self'", 'data:'],
+        'connect-src': ["'self'"],
+        // /games/* is the iframe target; allow it as a frame source.
+        'frame-src':   ["'self'"],
+        // The catalog/admin pages are NEVER framed by external sites.
+        'frame-ancestors': ["'self'"],
+        'base-uri': ["'self'"],
+        'form-action': ["'self'"],
+      },
+    },
     crossOriginEmbedderPolicy: false,
     crossOriginResourcePolicy: { policy: 'cross-origin' },
+    // Modern referrer policy (don't leak admin URLs to game origins).
+    referrerPolicy: { policy: 'no-referrer-when-downgrade' },
   }));
   app.use(express.json({ limit: '256kb' }));
 

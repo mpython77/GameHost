@@ -83,9 +83,17 @@
       <div class="resolution-info" id="resolution-info">Auto</div>
 
       <div class="iframe-container" id="iframe-container">
+        <!--
+          Sandbox NOTE: We intentionally OMIT `allow-same-origin`.
+          With same-origin, an uploaded game could read the parent
+          window's sessionStorage and steal the admin token. The
+          unique-origin sandbox blocks that while still allowing
+          all common HTML5/Cocos features (canvas, WebGL, audio,
+          IndexedDB scoped to its own origin).
+        -->
         <iframe class="player-iframe"
                 id="game-iframe"
-                sandbox="allow-scripts allow-same-origin allow-popups allow-forms allow-downloads"
+                sandbox="allow-scripts allow-popups allow-forms allow-downloads allow-pointer-lock allow-orientation-lock"
                 allowfullscreen></iframe>
       </div>
     </div>

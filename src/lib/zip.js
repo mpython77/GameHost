@@ -10,10 +10,17 @@ const { ValidationError } = require('./errors');
  * Returns true if the entry is safe.
  */
 function isSafeEntryName(entryName) {
+  if (typeof entryName !== 'string' || entryName.length === 0) return false;
   if (path.isAbsolute(entryName)) return false;
   if (entryName.includes('..')) return false;
   if (entryName.includes('\0')) return false;
+  if (entryName.includes('\\')) return false;          // backslash (Windows traversal)
   if (/^[a-zA-Z]:[\\/]/.test(entryName)) return false; // Windows drive letter
+  // Any segment that resolves to "." or ".." after normalization
+  const parts = entryName.split('/');
+  for (const p of parts) {
+    if (p === '..' || p === '.') return false;
+  }
   return true;
 }
 

@@ -3,10 +3,11 @@
  *
  * Improvements over the original:
  *   - Atomic writes (write-to-tmp then rename) — no partial files on crash
- *   - claimGame() now persists (was a documented bug)
  *   - Pagination + filter helpers
  *   - Public/safe view helper that strips secret tokens
  *   - In-memory + on-disk indexes by id and privateToken
+ *   - Buffered, debounced play-count writes (high-frequency increments
+ *     no longer rewrite the whole DB file every time)
  */
 
 'use strict';
@@ -17,6 +18,8 @@ const { writeFileAtomic } = require('../lib/files');
 const logger = require('../lib/logger');
 
 const DB_VERSION = '3.0';
+const PLAY_FLUSH_DEBOUNCE_MS = 5000;   // flush after 5s idle
+const PLAY_FLUSH_MAX_DELAY_MS = 30000; // hard flush at most every 30s
 
 class GamesDB {
   constructor(filePath, legacyConfigFile) {
@@ -26,6 +29,11 @@ class GamesDB {
     this._byId = new Map();
     this._byToken = new Map();
     this._reindex();
+
+    // Play-count buffer — set of dirty game ids waiting to be flushed.
+    this._dirtyPlayIds = new Set();
+    this._flushTimer = null;
+    this._lastFlushAt = Date.now();
   }
 
   _load() {
@@ -179,14 +187,55 @@ class GamesDB {
     return game;
   }
 
-  /** Increment play counter atomically. */
+  /**
+   * Increment play counter — buffered. The change is reflected in memory
+   * immediately (so subsequent reads see it), but the JSON file is only
+   * rewritten after a debounce window. This makes the play endpoint
+   * cheap even under high traffic.
+   *
+   * Call `flushPlayBuffer()` for a synchronous flush (e.g. on shutdown).
+   */
   incrementPlay(id) {
     const game = this.getById(id);
     if (!game) return null;
     game.playCount = (game.playCount || 0) + 1;
     game.lastPlayedAt = new Date().toISOString();
-    this._save();
+    this._dirtyPlayIds.add(id);
+    this._scheduleFlush();
     return game;
+  }
+
+  _scheduleFlush() {
+    if (this._flushTimer) return; // already scheduled
+    const sinceLastFlush = Date.now() - this._lastFlushAt;
+    const delay = sinceLastFlush > PLAY_FLUSH_MAX_DELAY_MS
+      ? 0
+      : PLAY_FLUSH_DEBOUNCE_MS;
+    this._flushTimer = setTimeout(() => {
+      this._flushTimer = null;
+      this.flushPlayBuffer();
+    }, delay);
+    if (typeof this._flushTimer.unref === 'function') this._flushTimer.unref();
+  }
+
+  /** Force-flush buffered play increments to disk. Idempotent. */
+  flushPlayBuffer() {
+    if (this._dirtyPlayIds.size === 0) {
+      this._lastFlushAt = Date.now();
+      return;
+    }
+    if (this._flushTimer) {
+      clearTimeout(this._flushTimer);
+      this._flushTimer = null;
+    }
+    this._dirtyPlayIds.clear();
+    this._lastFlushAt = Date.now();
+    this._save();
+  }
+
+  /** Stop the flush timer; flush any pending writes (call on shutdown). */
+  close() {
+    this.flushPlayBuffer();
   }
 }
 

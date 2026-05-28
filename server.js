@@ -41,6 +41,17 @@ server.on('error', (err) => {
 // ─── Graceful shutdown ───
 function shutdown(signal) {
   logger.info('shutdown.start', { signal });
+  // Flush any buffered DB writes before exit.
+  try {
+    if (app.locals.deps && app.locals.deps.games && app.locals.deps.games.db) {
+      app.locals.deps.games.db.close();
+    }
+    if (app.locals.deps && app.locals.deps.tokens && typeof app.locals.deps.tokens.close === 'function') {
+      app.locals.deps.tokens.close();
+    }
+  } catch (err) {
+    logger.warn('shutdown.flush_failed', { error: err.message });
+  }
   server.close((err) => {
     if (err) {
       logger.error('shutdown.error', { error: err.message });
