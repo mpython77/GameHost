@@ -110,7 +110,10 @@ const config = Object.freeze({
   ADMIN_PASSWORD,
   TEMP_PASSWORD_GENERATED,
   ADMIN_SECRET_ENV: process.env.ADMIN_SECRET || null,
-  ADMIN_TOKEN_TTL_MS: int(process.env.ADMIN_TOKEN_TTL_MS, 8 * 60 * 60 * 1000),
+  // Default 30 days — the front-end stores the token in localStorage so it
+  // persists across browser restarts; a longer TTL matches "remember me on
+  // this device" UX. Override via ADMIN_TOKEN_TTL_MS env for shorter sessions.
+  ADMIN_TOKEN_TTL_MS: int(process.env.ADMIN_TOKEN_TTL_MS, 30 * 24 * 60 * 60 * 1000),
 
   // Public URL (optional)
   PUBLIC_BASE_URL: process.env.PUBLIC_BASE_URL || null,
