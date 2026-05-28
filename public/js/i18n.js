@@ -483,6 +483,11 @@ const I18N = (() => {
     'admin.confirmDeleteFile': { uz: '"{name}" ni o\'chirishni xohlaysizmi?', ru: 'Удалить "{name}"?', en: 'Delete "{name}"?' },
     'admin.toastDeletedFile': { uz: '"{name}" o\'chirildi', ru: '"{name}" удалён', en: '"{name}" deleted' },
     'admin.wrongCredentials': { uz: "Login yoki parol noto'g'ri", ru: 'Неверный логин или пароль', en: 'Wrong username or password' },
+    'admin.persistentLogin': {
+      uz: 'Bu qurilmada 30 kun eslab qolinadi',
+      ru: 'Запомнить на этом устройстве на 30 дней',
+      en: 'Remembered on this device for 30 days'
+    },
 
     // ─── Analytics dashboard ───
     'analytics.title':         { uz: '📈 Analitika', ru: '📈 Аналитика', en: '📈 Analytics' },

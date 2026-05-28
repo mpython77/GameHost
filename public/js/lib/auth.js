@@ -1,11 +1,19 @@
 /**
  * Frontend admin-token storage and helpers.
  *
- * - Token kept in sessionStorage (cleared on tab close).
- * - getToken / setToken / clearToken
- * - logout(): calls server /api/admin/logout to invalidate (denylist),
- *   then clears local storage.
- * - check(): asks server if current token is still valid.
+ * Storage strategy (persistent — survives tab close & browser restart):
+ *   - Primary store: localStorage   (writes go here)
+ *   - Backward-compat read: localStorage first, then sessionStorage
+ *     (so older tabs still logged in via sessionStorage keep working
+ *     until they re-login, at which point they upgrade to localStorage)
+ *   - clearToken() / logout() wipe BOTH storages.
+ *
+ * check() failure-handling:
+ *   - HTTP 401  → token is genuinely invalid → clear it.
+ *   - HTTP 5xx, other 4xx, network errors → server is unreachable
+ *     or misbehaving, but the token may still be valid. Keep it.
+ *     Return cached _lastCheck.ok if any, else optimistic `true`.
+ *     This prevents false logouts on transient blips.
  */
 window.GH = window.GH || {};
 window.GH.Auth = (function () {
@@ -16,13 +24,28 @@ window.GH.Auth = (function () {
   let _lastCheck = { ts: 0, ok: false };
 
   function getToken() {
+    // Read from localStorage first (new persistent location), fall back
+    // to sessionStorage for backward-compat with already-logged-in tabs.
+    try {
+      const v = localStorage.getItem(KEY);
+      if (v) return v;
+    } catch {}
     try { return sessionStorage.getItem(KEY); } catch { return null; }
   }
+
   function setToken(t) {
-    try { sessionStorage.setItem(KEY, t); } catch {}
+    // Write only to localStorage so login persists across tab/browser close.
+    try { localStorage.setItem(KEY, t); } catch {}
+    // Best-effort: also clean any old sessionStorage copy so we have a
+    // single source of truth going forward.
+    try { sessionStorage.removeItem(KEY); } catch {}
     _lastCheck = { ts: Date.now(), ok: true };
   }
+
   function clearToken() {
+    // Clear from BOTH storages so logout is complete regardless of where
+    // the token originally landed.
+    try { localStorage.removeItem(KEY); } catch {}
     try { sessionStorage.removeItem(KEY); } catch {}
     _lastCheck = { ts: Date.now(), ok: false };
   }
@@ -38,14 +61,24 @@ window.GH.Auth = (function () {
       const r = await fetch('/api/admin/stats', {
         headers: { 'x-admin-token': t },
       });
-      _lastCheck = { ts: now, ok: r.ok };
-      if (!r.ok) {
-        try { sessionStorage.removeItem(KEY); } catch {}
+      if (r.ok) {
+        _lastCheck = { ts: now, ok: true };
+        return true;
       }
-      return r.ok;
+      if (r.status === 401) {
+        // Token is genuinely invalid — wipe it.
+        clearToken();
+        return false;
+      }
+      // 5xx, 403, 404, etc. — server is up but weird. Don't punish the
+      // user with a logout for a transient backend issue. Keep the
+      // token; report the last known good state if we have one,
+      // otherwise be optimistic (we still have a token).
+      return _lastCheck.ts > 0 ? _lastCheck.ok : true;
     } catch {
-      // Network error — don't invalidate cached state.
-      return _lastCheck.ok;
+      // Network error — server unreachable. Keep token; stay optimistic
+      // if no cached state.
+      return _lastCheck.ts > 0 ? _lastCheck.ok : true;
     }
   }
 
