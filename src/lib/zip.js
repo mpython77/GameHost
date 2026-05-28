@@ -18,8 +18,24 @@ function isSafeEntryName(entryName) {
 }
 
 /**
+ * Detect a symlink entry in a ZIP. Symlinks allow attacks where the link
+ * points to a sensitive file (e.g. /etc/passwd) and a later read follows it.
+ *
+ * In ZIP, symlinks are encoded by setting the upper 4 bits of the Unix
+ * file mode (in the high 16 bits of the external attribute) to 0xA (S_IFLNK).
+ */
+function isSymlinkEntry(entry) {
+  // adm-zip stores `attr` as a 32-bit external attribute. Top 16 bits are
+  // the Unix file mode. 0xA000 == S_IFLNK.
+  const attr = entry && (entry.attr || (entry.header && entry.header.attr));
+  if (typeof attr !== 'number') return false;
+  const mode = (attr >>> 16) & 0xFFFF;
+  return (mode & 0xF000) === 0xA000;
+}
+
+/**
  * Safely extract a ZIP archive into a directory.
- * Performs a full ZIP-Slip pre-scan before any extraction.
+ * Performs a full ZIP-Slip + symlink pre-scan before any extraction.
  *
  * @throws {ValidationError} if the archive is malicious or invalid.
  */
@@ -40,6 +56,11 @@ function extractSafe(zipPath, destDir) {
     if (!isSafeEntryName(entry.entryName)) {
       throw new ValidationError(
         'ZIP fayl xavfsiz emas (path traversal aniqlandi): ' + entry.entryName
+      );
+    }
+    if (isSymlinkEntry(entry)) {
+      throw new ValidationError(
+        'ZIP fayl symlink ichida — xavfsizlik uchun rad etildi: ' + entry.entryName
       );
     }
   }
@@ -81,6 +102,7 @@ function zipDirectoryToBuffer(dir) {
 
 module.exports = {
   isSafeEntryName,
+  isSymlinkEntry,
   extractSafe,
   ensureIndexHtmlAtRoot,
   zipDirectoryToBuffer,

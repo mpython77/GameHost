@@ -46,9 +46,11 @@
       if (!this.current && Array.isArray(window.GAMES_CONFIG)) {
         this.current = window.GAMES_CONFIG.find((g) => g.id === gameId);
       }
+
       if (!this.current) {
-        // Last-resort: try to load by folder name == id
-        this.current = { id: gameId, folder: gameId, name: { uz: gameId, ru: gameId, en: gameId } };
+        // No fallback to "folder == id". Doing that exposed any private game
+        // whose slug an attacker could guess. Show a clean error instead.
+        return this.showLoadError('notFound');
       }
       this.start();
     },
@@ -57,15 +59,33 @@
       try {
         this.current = await api.get('/api/games/private/' + token + '?_t=' + Date.now());
       } catch (err) {
-        const loading = $('#player-loading');
-        if (loading) {
-          loading.innerHTML = `<div class="loading-text" style="color:#ef4444;">${
-            err.status === 404 ? I18N.t('player.notFound') : I18N.t('player.networkError')
-          }</div>`;
-        }
-        return;
+        return this.showLoadError(err.status === 404 ? 'notFound' : 'networkError');
       }
       this.start();
+    },
+
+    /**
+     * Render an error in place of the loading spinner with a "back" link
+     * so the user is never stuck on a dead page.
+     */
+    showLoadError(kind) {
+      const loading = $('#player-loading');
+      if (!loading) return;
+      const msg = kind === 'notFound'
+        ? I18N.t('player.notFound')
+        : I18N.t('player.networkError');
+      loading.classList.remove('hidden');
+      loading.innerHTML = `
+        <div style="text-align:center;max-width:320px;">
+          <div style="font-size:48px;margin-bottom:1rem;">😕</div>
+          <div class="loading-text" style="color:#ef4444;margin-bottom:1.25rem;">${msg}</div>
+          <a href="index.html" style="
+            display:inline-block;padding:8px 22px;border-radius:999px;
+            background:rgba(124,58,237,0.15);color:#a78bfa;
+            text-decoration:none;font-weight:600;">
+            ← ${I18N.t('player.back') || 'Orqaga'}
+          </a>
+        </div>`;
     },
 
     start() {

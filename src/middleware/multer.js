@@ -4,6 +4,7 @@ const path = require('path');
 const multer = require('multer');
 const config = require('../config');
 const { ensureDir } = require('../lib/files');
+const { ValidationError } = require('../lib/errors');
 
 ensureDir(config.UPLOADS_DIR);
 
@@ -15,12 +16,16 @@ const upload = multer({
     if (file.fieldname === 'thumbnail') {
       const ok = config.ALLOWED_IMAGE_EXTS.includes(ext)
         || (file.mimetype && file.mimetype.startsWith('image/'));
-      if (!ok) return cb(new Error('Thumbnail uchun faqat rasm fayllari'), false);
+      if (!ok) {
+        return cb(new ValidationError('Thumbnail uchun faqat rasm fayllari'), false);
+      }
     } else {
       const ok = config.ALLOWED_GAME_EXTS.includes(ext)
         || file.mimetype === 'text/html'
         || file.mimetype === 'application/zip';
-      if (!ok) return cb(new Error('Faqat HTML yoki ZIP fayllar qabul qilinadi'), false);
+      if (!ok) {
+        return cb(new ValidationError('Faqat HTML yoki ZIP fayllar qabul qilinadi'), false);
+      }
     }
     cb(null, true);
   },
