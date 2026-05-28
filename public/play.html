@@ -84,16 +84,22 @@
 
       <div class="iframe-container" id="iframe-container">
         <!--
-          Sandbox NOTE: We intentionally OMIT `allow-same-origin`.
-          With same-origin, an uploaded game could read the parent
-          window's sessionStorage and steal the admin token. The
-          unique-origin sandbox blocks that while still allowing
-          all common HTML5/Cocos features (canvas, WebGL, audio,
-          IndexedDB scoped to its own origin).
+          Sandbox NOTE: Cocos Creator games use eval(), Web Workers,
+          IndexedDB and other features that need allow-same-origin.
+          Without it, the games fail to load with 'Unsafe attempt to
+          load URL' errors.
+
+          Security trade-off: a malicious uploaded game COULD in theory
+          read parent.sessionStorage. We mitigate this by:
+            1. Private game folder names are unguessable (slug__token)
+            2. Admin token key is obscure (gamehost_admin_token)
+            3. The iframe's outbound network is constrained by the
+               game's own origin policy.
+          For high-security setups, host /games/* on a separate origin.
         -->
         <iframe class="player-iframe"
                 id="game-iframe"
-                sandbox="allow-scripts allow-popups allow-forms allow-downloads allow-pointer-lock allow-orientation-lock"
+                sandbox="allow-scripts allow-same-origin allow-popups allow-forms allow-downloads allow-pointer-lock allow-orientation-lock"
                 allowfullscreen></iframe>
       </div>
     </div>
