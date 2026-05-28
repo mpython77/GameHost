@@ -40,6 +40,14 @@ function migrateLegacyConfig(db) {
 
   try {
     const content = fs.readFileSync(config.LEGACY_CONFIG_FILE, 'utf8');
+
+    // Skip our own auto-generated file. This avoids "phantom resurrection":
+    // if data/ is wiped but public/js/games-config.js (auto-written on every
+    // save) is still around, we would otherwise re-import non-existent games.
+    if (content.includes('AUTO-GENERATED')) {
+      return 0;
+    }
+
     const match = content.match(/const GAMES_CONFIG = (\[[\s\S]*?\]);/);
     if (!match) return 0;
 
@@ -52,12 +60,24 @@ function migrateLegacyConfig(db) {
     }
     if (!Array.isArray(oldGames) || oldGames.length === 0) return 0;
 
+    let imported = 0;
     for (const game of oldGames) {
+      // Only import games whose on-disk folder actually exists. This avoids
+      // importing stale entries for games whose files were deleted.
+      const folder = game.folder || game.id;
+      if (!folder) continue;
+      if (!fs.existsSync(path.join(config.GAMES_DIR, folder))) {
+        logger.debug('legacy.skip_missing_folder', { folder });
+        continue;
+      }
       if (!game.createdAt) game.createdAt = new Date().toISOString();
       db.add(game);
+      imported++;
     }
-    logger.info('legacy.config.imported', { count: oldGames.length });
-    return oldGames.length;
+    if (imported > 0) {
+      logger.info('legacy.config.imported', { count: imported });
+    }
+    return imported;
   } catch (err) {
     logger.warn('legacy.config.error', { error: err.message });
     return 0;

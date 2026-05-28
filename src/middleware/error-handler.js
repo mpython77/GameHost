@@ -9,8 +9,9 @@ function notFound(req, res, next) {
   if (req.path.startsWith('/api/')) {
     return res.status(404).json({ error: 'Sahifa topilmadi' });
   }
-  // For pages, redirect to home
-  return res.status(404).redirect('/');
+  // For pages, redirect cleanly to home (302, not "404 + Location header"
+  // which mixes statuses and confuses some browsers / proxies).
+  return res.redirect(302, '/');
 }
 
 /** Central error handler. Maps domain errors to HTTP responses. */

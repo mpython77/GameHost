@@ -284,19 +284,50 @@
     setupCardTilt() {
       // Skip on touch / coarse pointers
       if (window.matchMedia && window.matchMedia('(pointer: coarse)').matches) return;
-      document.addEventListener('mousemove', (e) => {
-        $$('.game-card').forEach((card) => {
+
+      // The original implementation called getBoundingClientRect for EVERY
+      // card on EVERY mousemove (~100Hz). With 50 cards that's 5000 layout
+      // reads per second → severe jank. Throttle to one rAF tick and use
+      // a cheap viewport-edge cull before measuring each card.
+      let pendingFrame = null;
+      let lastEvent = null;
+      const PROXIMITY = 250;
+
+      const update = () => {
+        pendingFrame = null;
+        if (!lastEvent) return;
+        const cx = lastEvent.clientX;
+        const cy = lastEvent.clientY;
+        const cards = $$('.game-card');
+        cards.forEach((card) => {
           const r = card.getBoundingClientRect();
-          const x = e.clientX - r.left - r.width / 2;
-          const y = e.clientY - r.top - r.height / 2;
+          // Cheap bbox-with-padding check before computing distance.
+          if (cx < r.left - PROXIMITY || cx > r.right + PROXIMITY ||
+              cy < r.top  - PROXIMITY || cy > r.bottom + PROXIMITY) {
+            if (card.style.transform) card.style.transform = '';
+            return;
+          }
+          const x = cx - r.left - r.width / 2;
+          const y = cy - r.top - r.height / 2;
           const dist = Math.sqrt(x * x + y * y);
-          if (dist < 250) {
+          if (dist < PROXIMITY) {
             const tx = (y / r.height) * 6;
             const ty = -(x / r.width) * 6;
-            card.style.transform = `perspective(1000px) rotateX(${tx}deg) rotateY(${ty}deg) translateY(-6px)`;
+            card.style.transform =
+              `perspective(1000px) rotateX(${tx}deg) rotateY(${ty}deg) translateY(-6px)`;
+          } else if (card.style.transform) {
+            card.style.transform = '';
           }
         });
-      });
+      };
+
+      document.addEventListener('mousemove', (e) => {
+        lastEvent = e;
+        if (pendingFrame == null) {
+          pendingFrame = requestAnimationFrame(update);
+        }
+      }, { passive: true });
+
       document.addEventListener('mouseleave', () => {
         $$('.game-card').forEach((c) => { c.style.transform = ''; });
       });

@@ -42,10 +42,30 @@ class UploadService {
       throw new ValidationError("Faqat .html yoki .zip fayllar qabul qilinadi");
     }
 
-    const folder = slugify(fields.gameName_en || fields.gameName_uz);
+    // ─── Slug + uniqueness ───
+    // `id` is the public identifier (clean slug). On collision with an
+    // existing PUBLIC game, suffix with -2, -3, ...
+    // For PRIVATE games, the on-disk `folder` gets an unguessable suffix
+    // derived from the privateToken, so direct URL access (e.g. guessing
+    // /games/<slug>/index.html) is no longer possible.
+    const baseSlug = slugify(fields.gameName_en || fields.gameName_uz);
+    const id = this._allocateUniqueId(baseSlug);
+
+    // Pre-generate privateToken so we can use it in the folder name
+    const privateToken = fields.isPrivate
+      ? crypto.randomBytes(24).toString('hex')
+      : null;
+
+    // Folder layout:
+    //   public:  <id>                    (e.g. "qora-tuynuk")
+    //   private: <id>__<token-prefix>    (e.g. "qora-tuynuk__a1b2c3d4...")
+    const folder = privateToken
+      ? `${id}__${privateToken.slice(0, 24)}`
+      : id;
+
     const gameDir = path.join(config.GAMES_DIR, folder);
 
-    // Clean any existing folder (replace upload semantics)
+    // Clean any existing folder (defensive — should not exist after _allocateUniqueId)
     rmRecursive(gameDir);
     ensureDir(gameDir);
 
@@ -86,12 +106,8 @@ class UploadService {
     }
 
     // Persist
-    const privateToken = fields.isPrivate
-      ? crypto.randomBytes(16).toString('hex')
-      : null;
-
     const record = {
-      id: folder,
+      id,
       folder,
       uploadedAt: Date.now(),
       thumbnail: thumbnailName,
@@ -102,9 +118,9 @@ class UploadService {
       playCount: 0,
       lastPlayedAt: null,
       name: {
-        uz: fields.gameName_uz || folder,
-        ru: fields.gameName_ru || fields.gameName_uz || folder,
-        en: fields.gameName_en || fields.gameName_uz || folder,
+        uz: fields.gameName_uz || id,
+        ru: fields.gameName_ru || fields.gameName_uz || id,
+        en: fields.gameName_en || fields.gameName_uz || id,
       },
       description: {
         uz: fields.gameDesc_uz || '',
@@ -116,10 +132,34 @@ class UploadService {
     this.games.add(record);
     logger.info('game.uploaded', {
       id: record.id,
+      folder: record.folder,
       isPrivate: record.isPrivate,
       ext,
     });
     return record;
+  }
+
+  /**
+   * Find an unused id by appending -2, -3, ... to the base slug if needed.
+   * Checks both the DB (in case folder was manually deleted but DB row remains)
+   * and the on-disk games directory.
+   */
+  _allocateUniqueId(baseSlug) {
+    let candidate = baseSlug;
+    let suffix = 1;
+    const taken = (slug) =>
+      this.games.db.getById(slug) !== null ||
+      fs.existsSync(path.join(config.GAMES_DIR, slug));
+    while (taken(candidate)) {
+      suffix += 1;
+      candidate = `${baseSlug}-${suffix}`;
+      if (suffix > 1000) {
+        // Defensive: avoid pathological loops
+        candidate = `${baseSlug}-${crypto.randomBytes(4).toString('hex')}`;
+        break;
+      }
+    }
+    return candidate;
   }
 
   _cleanupFile(p) {

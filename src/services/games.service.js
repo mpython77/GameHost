@@ -64,16 +64,51 @@ class GamesService {
     return game;
   }
 
-  /** Toggle privacy of a game. Generates token when going private. */
+  /**
+   * Toggle privacy of a game.
+   *
+   * Going PRIVATE: generate a new token, rename the on-disk folder to
+   *   "<id>__<token-prefix>" so the URL becomes unguessable.
+   * Going PUBLIC: clear the token and rename the folder back to "<id>".
+   *
+   * If the rename fails, the DB is not updated (stays consistent with disk).
+   */
   setPrivacy(id, isPrivate) {
     const game = this.getById(id);
-    const patch = { isPrivate };
-    if (!isPrivate) {
-      patch.privateToken = null;
-    } else if (!game.privateToken) {
-      patch.privateToken = crypto.randomBytes(16).toString('hex');
+    if (!!game.isPrivate === !!isPrivate) return game; // no-op
+
+    const oldFolder = game.folder;
+    const oldDir = path.join(config.GAMES_DIR, oldFolder);
+    let newFolder;
+    let newToken = null;
+
+    if (isPrivate) {
+      newToken = crypto.randomBytes(24).toString('hex');
+      newFolder = `${id}__${newToken.slice(0, 24)}`;
+    } else {
+      newFolder = id;
     }
-    return this.db.update(id, patch);
+
+    // Same folder? Skip rename. Otherwise rename safely.
+    if (newFolder !== oldFolder) {
+      const newDir = path.join(config.GAMES_DIR, newFolder);
+      if (fs.existsSync(newDir)) {
+        // Should not happen — newDir collides. Avoid clobbering.
+        rmRecursive(newDir);
+      }
+      try {
+        fs.renameSync(oldDir, newDir);
+      } catch (err) {
+        logger.error('privacy.rename_failed', { id, oldFolder, newFolder, error: err.message });
+        throw new Error("Folder qayta nomlashda xatolik — privacy o'zgartirilmadi");
+      }
+    }
+
+    return this.db.update(id, {
+      isPrivate: !!isPrivate,
+      privateToken: newToken,
+      folder: newFolder,
+    });
   }
 
   /** Delete a game (DB row + on-disk files). */
