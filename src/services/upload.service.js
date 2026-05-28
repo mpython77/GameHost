@@ -19,8 +19,9 @@ const { ValidationError } = require('../lib/errors');
 const { Mutex } = require('../lib/mutex');
 
 class UploadService {
-  constructor(gamesService) {
+  constructor(gamesService, bus) {
     this.games = gamesService;
+    this.bus = bus; // optional EventBus for live updates / analytics
     // Serialize uploads so concurrent ones don't race on the slug allocator
     // or clobber each other's intermediate folder state.
     this._mutex = new Mutex();
@@ -146,6 +147,21 @@ class UploadService {
       isPrivate: record.isPrivate,
       ext,
     });
+
+    // Publish for live admin updates + analytics. Strip privateToken so
+    // it never lands in the SSE wire (SSE consumers might log events).
+    if (this.bus) {
+      const { EVENTS } = require('../lib/event-bus');
+      this.bus.publish(EVENTS.GAME_UPLOADED, {
+        gameId: record.id,
+        name: record.name,
+        category: record.category,
+        isPrivate: record.isPrivate,
+        thumbnail: record.thumbnail,
+        folder: record.folder,
+        createdAt: record.createdAt,
+      });
+    }
     return record;
   }
 

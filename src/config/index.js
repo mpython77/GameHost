@@ -102,6 +102,7 @@ const config = Object.freeze({
   DB_FILE: path.join(DATA_DIR, 'games-db.json'),
   SECRET_FILE: path.join(DATA_DIR, '.admin-secret'),
   TOKEN_DENYLIST_FILE: path.join(DATA_DIR, '.token-denylist.json'),
+  EVENTS_LOG_FILE: path.join(DATA_DIR, 'events.jsonl'),
   LEGACY_CONFIG_FILE: path.join(PUBLIC_DIR, 'js', 'games-config.js'),
 
   // Auth

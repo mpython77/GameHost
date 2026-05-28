@@ -15,17 +15,12 @@
       I18N.init();
       I18N.applyTranslations();
 
-      // Auth gate (server-side check). The synchronous pre-gate in upload.html
-      // already redirected anonymous users; here we verify the token is still
-      // valid on the server. If invalid, redirect & keep page hidden.
+      // Auth gate
       if (!(await Auth.check())) {
         try { sessionStorage.setItem('gamehost_redirect', 'upload.html'); } catch {}
-        window.location.replace('admin.html');
+        window.location.href = 'admin.html';
         return;
       }
-
-      // Auth confirmed — reveal the page.
-      document.documentElement.classList.remove('gh-auth-loading');
 
       $$('.lang-btn').forEach((b) => {
         b.addEventListener('click', () => I18N.setLang(b.dataset.lang));
@@ -111,7 +106,7 @@
     },
 
     selectThumb(file) {
-      if (file.size > 5 * 1024 * 1024) { alert("Rasm 5MB dan katta bo'lmasligi kerak"); return; }
+      if (file.size > 5 * 1024 * 1024) { alert(I18N.t('upload.thumbnailMaxSize')); return; }
       this.selectedThumbnail = file;
       const reader = new FileReader();
       reader.onload = (e) => {

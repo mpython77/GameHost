@@ -12,10 +12,22 @@ const config = require('../config');
 const logger = require('../lib/logger');
 const { rmRecursive } = require('../lib/files');
 const { NotFoundError } = require('../lib/errors');
+const { Mutex } = require('../lib/mutex');
+const { EVENTS } = require('../lib/event-bus');
 
 class GamesService {
-  constructor(db) {
+  constructor(db, bus) {
     this.db = db;
+    this.bus = bus; // optional EventBus
+    // Mutex for write operations that involve disk + DB updates.
+    // Prevents TOCTOU between fs.renameSync (setPrivacy) and DB update,
+    // and between getById and rmRecursive (delete) when concurrent admin
+    // requests target the same game.
+    this._mutex = new Mutex();
+  }
+
+  _emit(type, data) {
+    if (this.bus) this.bus.publish(type, data);
   }
 
   // ─── Read ───
@@ -61,6 +73,11 @@ class GamesService {
       playCount: game.playCount,
       ip: meta.ip,
     });
+    this._emit(EVENTS.GAME_PLAYED, {
+      gameId: id,
+      playCount: game.playCount,
+      isPrivate: !!game.isPrivate,
+    });
     return game;
   }
 
@@ -71,66 +88,81 @@ class GamesService {
    *   "<id>__<token-prefix>" so the URL becomes unguessable.
    * Going PUBLIC: clear the token and rename the folder back to "<id>".
    *
-   * If the rename fails, the DB is not updated (stays consistent with disk).
+   * Mutex-protected so concurrent admin PATCH requests cannot leave the
+   * disk and DB in inconsistent states.
    */
   setPrivacy(id, isPrivate) {
-    const game = this.getById(id);
-    if (!!game.isPrivate === !!isPrivate) return game; // no-op
+    return this._mutex.run(() => {
+      const game = this.getById(id);
+      if (!!game.isPrivate === !!isPrivate) return game; // no-op
 
-    const oldFolder = game.folder;
-    const oldDir = path.join(config.GAMES_DIR, oldFolder);
-    let newFolder;
-    let newToken = null;
+      const oldFolder = game.folder;
+      const oldDir = path.join(config.GAMES_DIR, oldFolder);
+      let newFolder;
+      let newToken = null;
 
-    if (isPrivate) {
-      newToken = crypto.randomBytes(24).toString('hex');
-      newFolder = `${id}__${newToken.slice(0, 24)}`;
-    } else {
-      newFolder = id;
-    }
-
-    // Same folder? Skip rename. Otherwise rename safely.
-    if (newFolder !== oldFolder) {
-      const newDir = path.join(config.GAMES_DIR, newFolder);
-      if (fs.existsSync(newDir)) {
-        // Should not happen — newDir collides. Avoid clobbering.
-        rmRecursive(newDir);
+      if (isPrivate) {
+        newToken = crypto.randomBytes(24).toString('hex');
+        newFolder = `${id}__${newToken.slice(0, 24)}`;
+      } else {
+        newFolder = id;
       }
-      try {
-        fs.renameSync(oldDir, newDir);
-      } catch (err) {
-        logger.error('privacy.rename_failed', { id, oldFolder, newFolder, error: err.message });
-        throw new Error("Folder qayta nomlashda xatolik — privacy o'zgartirilmadi");
-      }
-    }
 
-    return this.db.update(id, {
-      isPrivate: !!isPrivate,
-      privateToken: newToken,
-      folder: newFolder,
+      // Same folder? Skip rename. Otherwise rename safely.
+      if (newFolder !== oldFolder) {
+        const newDir = path.join(config.GAMES_DIR, newFolder);
+        if (fs.existsSync(newDir)) {
+          // Should not happen — newDir collides. Avoid clobbering.
+          rmRecursive(newDir);
+        }
+        try {
+          fs.renameSync(oldDir, newDir);
+        } catch (err) {
+          logger.error('privacy.rename_failed', { id, oldFolder, newFolder, error: err.message });
+          throw new Error("Folder qayta nomlashda xatolik — privacy o'zgartirilmadi");
+        }
+      }
+
+      const updated = this.db.update(id, {
+        isPrivate: !!isPrivate,
+        privateToken: newToken,
+        folder: newFolder,
+      });
+      this._emit(EVENTS.GAME_PRIVACY, {
+        gameId: id,
+        isPrivate: !!isPrivate,
+        folder: newFolder,
+      });
+      return updated;
     });
   }
 
-  /** Delete a game (DB row + on-disk files). */
+  /** Delete a game (DB row + on-disk files). Mutex-protected. */
   delete(id) {
-    const game = this.getById(id);
-    rmRecursive(path.join(config.GAMES_DIR, game.folder));
-    this.db.remove(id);
-    logger.info('game.deleted', { gameId: id, folder: game.folder });
-    return game;
+    return this._mutex.run(() => {
+      const game = this.getById(id);
+      rmRecursive(path.join(config.GAMES_DIR, game.folder));
+      this.db.remove(id);
+      logger.info('game.deleted', { gameId: id, folder: game.folder });
+      this._emit(EVENTS.GAME_DELETED, { gameId: id });
+      return game;
+    });
   }
 
-  /** Delete every game and its files. */
+  /** Delete every game and its files. Mutex-protected. */
   deleteAll() {
-    const games = this.db.getAll();
-    let deleted = 0;
-    for (const game of games) {
-      rmRecursive(path.join(config.GAMES_DIR, game.folder));
-      deleted++;
-    }
-    this.db.removeAll();
-    logger.warn('games.delete_all', { count: deleted });
-    return deleted;
+    return this._mutex.run(() => {
+      const games = this.db.getAll();
+      let deleted = 0;
+      for (const game of games) {
+        rmRecursive(path.join(config.GAMES_DIR, game.folder));
+        deleted++;
+      }
+      this.db.removeAll();
+      logger.warn('games.delete_all', { count: deleted });
+      this._emit(EVENTS.GAMES_CLEARED, { count: deleted });
+      return deleted;
+    });
   }
 
   /** Aggregated stats for the admin dashboard. */

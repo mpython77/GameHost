@@ -98,7 +98,15 @@ function buildGamesRouter({ games, qr, tokens }) {
     try {
       const { game, dir } = games.getGameDir(req.params.id);
       const buf = zipDirectoryToBuffer(dir);
-      res.setHeader('Content-Disposition', `attachment; filename="${game.folder}.zip"`);
+      // RFC 5987 — ASCII-only `filename` for safety + UTF-8 `filename*`.
+      // Strip CR/LF/quotes from the slug as a defence-in-depth (slug should
+      // already be safe, but `Content-Disposition` is sensitive).
+      const safeName = String(game.folder).replace(/[\r\n"\\]/g, '_');
+      const ascii = safeName.replace(/[^\x20-\x7E]/g, '_');
+      res.setHeader(
+        'Content-Disposition',
+        `attachment; filename="${ascii}.zip"; filename*=UTF-8''${encodeURIComponent(safeName)}.zip`
+      );
       res.setHeader('Content-Type', 'application/zip');
       res.setHeader('Content-Length', buf.length);
       res.send(buf);
@@ -106,9 +114,9 @@ function buildGamesRouter({ games, qr, tokens }) {
   });
 
   // ─── Delete (admin) ───
-  router.delete('/:id', requireAdmin, (req, res, next) => {
+  router.delete('/:id', requireAdmin, async (req, res, next) => {
     try {
-      const game = games.delete(req.params.id);
+      const game = await games.delete(req.params.id);
       res.json({ success: true, message: `"${game.id}" o'chirildi` });
     } catch (err) { next(err); }
   });

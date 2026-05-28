@@ -363,8 +363,8 @@
       navigator.share({ title: name, url }).catch(() => {});
     } else {
       navigator.clipboard.writeText(url).then(() => {
-        window.GH.toast('🔗 Havola nusxalandi!', 'info');
-      }).catch(() => prompt('Havolani nusxalang:', url));
+        window.GH.toast(I18N.t('home.linkCopied'), 'info');
+      }).catch(() => prompt(I18N.t('home.copyPrompt'), url));
     }
   });
 

@@ -422,6 +422,98 @@ const I18N = (() => {
       ru: 'Ошибка: Игра не найдена!',
       en: 'Error: Game not found!'
     },
+
+    // ─── Admin Panel ───
+    'admin.title': { uz: 'Admin Panel', ru: 'Админ Панель', en: 'Admin Panel' },
+    'admin.subtitle': { uz: 'GameHost boshqaruv tizimi', ru: 'Система управления GameHost', en: 'GameHost management system' },
+    'admin.login': { uz: 'Login', ru: 'Логин', en: 'Username' },
+    'admin.password': { uz: 'Parol', ru: 'Пароль', en: 'Password' },
+    'admin.loginBtn': { uz: 'Kirish', ru: 'Войти', en: 'Sign in' },
+    'admin.checking': { uz: 'Tekshirilmoqda...', ru: 'Проверка...', en: 'Checking...' },
+    'admin.backToHome': { uz: '← Asosiy sahifaga qaytish', ru: '← Вернуться на главную', en: '← Back to home' },
+    'admin.site': { uz: '🏠 Sayt', ru: '🏠 Сайт', en: '🏠 Site' },
+    'admin.uploadNav': { uz: '📤 Yuklash', ru: '📤 Загрузка', en: '📤 Upload' },
+    'admin.logout': { uz: '🚪 Chiqish', ru: '🚪 Выйти', en: '🚪 Logout' },
+    'admin.statsTotal': { uz: "Jami o'yinlar", ru: 'Всего игр', en: 'Total games' },
+    'admin.statsPublic': { uz: 'Public', ru: 'Публичные', en: 'Public' },
+    'admin.statsPrivate': { uz: 'Private', ru: 'Приватные', en: 'Private' },
+    'admin.statsPlays': { uz: "Jami o'ynashlar", ru: 'Всего запусков', en: 'Total plays' },
+    'admin.allGames': { uz: "🎮 Barcha o'yinlar", ru: '🎮 Все игры', en: '🎮 All games' },
+    'admin.deleteAll': { uz: "🗑️ Hammasini o'chir", ru: '🗑️ Удалить все', en: '🗑️ Delete all' },
+    'admin.search': { uz: 'Qidirish...', ru: 'Поиск...', en: 'Search...' },
+    'admin.filterAll': { uz: 'Barchasi', ru: 'Все', en: 'All' },
+    'admin.filterPublic': { uz: 'Public', ru: 'Публичные', en: 'Public' },
+    'admin.filterPrivate': { uz: 'Private', ru: 'Приватные', en: 'Private' },
+    'admin.storage': { uz: '💾 Storage Manager', ru: '💾 Менеджер хранилища', en: '💾 Storage Manager' },
+    'admin.refresh': { uz: '🔄 Yangilash', ru: '🔄 Обновить', en: '🔄 Refresh' },
+    'admin.confirmTitle': { uz: "O'yinni o'chirish", ru: 'Удаление игры', en: 'Delete game' },
+    'admin.confirmText': { uz: "Rostdan ham bu o'yinni o'chirishni xohlaysizmi?", ru: 'Вы действительно хотите удалить эту игру?', en: 'Are you sure you want to delete this game?' },
+    'admin.confirmCancel': { uz: 'Bekor qilish', ru: 'Отмена', en: 'Cancel' },
+    'admin.confirmDelete': { uz: "O'chirish", ru: 'Удалить', en: 'Delete' },
+    'admin.loading': { uz: 'Yuklanmoqda...', ru: 'Загрузка...', en: 'Loading...' },
+    'admin.tableName': { uz: 'Nomi', ru: 'Название', en: 'Name' },
+    'admin.tableStatus': { uz: 'Status', ru: 'Статус', en: 'Status' },
+    'admin.tablePlays': { uz: "O'ynash", ru: 'Запусков', en: 'Plays' },
+    'admin.tableDate': { uz: 'Sana', ru: 'Дата', en: 'Date' },
+    'admin.tableActions': { uz: 'Amallar', ru: 'Действия', en: 'Actions' },
+    'admin.tablePlay': { uz: "▶ O'ynash", ru: '▶ Играть', en: '▶ Play' },
+    'admin.gameNotFound': { uz: "O'yin topilmadi", ru: 'Игра не найдена', en: 'No games found' },
+    'admin.publicLabel': { uz: '🌐 Public', ru: '🌐 Публичная', en: '🌐 Public' },
+    'admin.privateLabel': { uz: '🔒 Private', ru: '🔒 Приватная', en: '🔒 Private' },
+    'admin.makePublic': { uz: '🌐 Public qilish', ru: '🌐 Сделать публичной', en: '🌐 Make public' },
+    'admin.makePrivate': { uz: '🔒 Private qilish', ru: '🔒 Сделать приватной', en: '🔒 Make private' },
+    'admin.topGames': { uz: "🏆 Eng ko'p o'ynalgan", ru: '🏆 Топ по запускам', en: '🏆 Most played' },
+    'admin.quickStats': { uz: '📊 Tezkor statistika', ru: '📊 Быстрая статистика', en: '📊 Quick stats' },
+    'admin.noData': { uz: "Ma'lumot yo'q", ru: 'Нет данных', en: 'No data' },
+    'admin.avgPlays': { uz: "O'rtacha o'ynashlar", ru: 'Среднее запусков', en: 'Average plays' },
+    'admin.publicShare': { uz: 'Public ulushi', ru: 'Доля публичных', en: 'Public share' },
+    'admin.privateShare': { uz: 'Private ulushi', ru: 'Доля приватных', en: 'Private share' },
+    'admin.toastLoggedOut': { uz: 'Chiqildi', ru: 'Вы вышли', en: 'Logged out' },
+    'admin.toastDeleted': { uz: "O'yin o'chirildi", ru: 'Игра удалена', en: 'Game deleted' },
+    'admin.toastMadePublic': { uz: 'Public qilindi', ru: 'Сделано публичной', en: 'Made public' },
+    'admin.toastMadePrivate': { uz: 'Private qilindi', ru: 'Сделано приватной', en: 'Made private' },
+    'admin.deleteAllConfirm1': { uz: "⚠️ BARCHA {n} ta o'yinni o'chirasizmi? Bu amalni qaytarib bo'lmaydi!", ru: '⚠️ Удалить ВСЕ {n} игр? Это действие необратимо!', en: '⚠️ Delete ALL {n} games? This cannot be undone!' },
+    'admin.deleteAllConfirm2': { uz: "🔴 Tasdiqlang: {n} ta o'yin va barcha fayllar O'CHIRILADI!", ru: '🔴 Подтвердите: {n} игр и все файлы будут УДАЛЕНЫ!', en: '🔴 Confirm: {n} games and all files will be DELETED!' },
+    'admin.deleteAllSuccess': { uz: "✅ {n} ta o'yin o'chirildi", ru: '✅ Удалено {n} игр', en: '✅ {n} games deleted' },
+    'admin.deleteAllNoGames': { uz: "O'yinlar yo'q", ru: 'Нет игр', en: 'No games' },
+    'admin.deleteSpecConfirm': { uz: "\"{name}\" o'yinini o'chirmoqchimisiz? Bu amalni qaytarib bo'lmaydi.", ru: 'Удалить игру "{name}"? Это действие необратимо.', en: 'Delete the game "{name}"? This cannot be undone.' },
+    'admin.empty': { uz: "Bo'sh", ru: 'Пусто', en: 'Empty' },
+    'admin.errorPrefix': { uz: 'Xatolik', ru: 'Ошибка', en: 'Error' },
+    'admin.deleteFile': { uz: "🗑️ O'chir", ru: '🗑️ Удалить', en: '🗑️ Delete' },
+    'admin.confirmDeleteFile': { uz: '"{name}" ni o\'chirishni xohlaysizmi?', ru: 'Удалить "{name}"?', en: 'Delete "{name}"?' },
+    'admin.toastDeletedFile': { uz: '"{name}" o\'chirildi', ru: '"{name}" удалён', en: '"{name}" deleted' },
+    'admin.wrongCredentials': { uz: "Login yoki parol noto'g'ri", ru: 'Неверный логин или пароль', en: 'Wrong username or password' },
+
+    // ─── Analytics dashboard ───
+    'analytics.title':         { uz: '📈 Analitika', ru: '📈 Аналитика', en: '📈 Analytics' },
+    'analytics.range7d':       { uz: '7 kun', ru: '7 дней', en: '7 days' },
+    'analytics.range30d':      { uz: '30 kun', ru: '30 дней', en: '30 days' },
+    'analytics.range90d':      { uz: '90 kun', ru: '90 дней', en: '90 days' },
+    'analytics.rangePlays':    { uz: "Davr o'ynashlari", ru: 'Запусков за период', en: 'Plays in range' },
+    'analytics.rangeUploads':  { uz: "Davr yuklashlari", ru: 'Загрузок за период', en: 'Uploads in range' },
+    'analytics.allTimePlays':  { uz: "Hammavaqt o'ynashlari", ru: 'Всего запусков', en: 'All-time plays' },
+    'analytics.connection':    { uz: 'Live ulanish', ru: 'Live соединение', en: 'Live connection' },
+    'analytics.sseConnected':  { uz: 'Ulangan', ru: 'Подключено', en: 'Connected' },
+    'analytics.sseDisconnected': { uz: "Uzilgan — qayta urinilyapti", ru: 'Отключено — переподключаемся', en: 'Disconnected — retrying' },
+    'analytics.sseConnecting': { uz: 'Ulanmoqda...', ru: 'Подключение...', en: 'Connecting...' },
+    'analytics.activityChart': { uz: "Faollik (har kunlik)", ru: 'Активность (по дням)', en: 'Activity (daily)' },
+    'analytics.privacyChart':  { uz: 'Public / Private', ru: 'Публичные / Приватные', en: 'Public / Private' },
+    'analytics.categoryChart': { uz: 'Kategoriyalar', ru: 'Категории', en: 'Categories' },
+    'analytics.topGamesChart': { uz: "Top o'yinlar", ru: 'Топ игр', en: 'Top games' },
+    'analytics.plays':         { uz: "O'ynashlar", ru: 'Запуски', en: 'Plays' },
+    'analytics.uploads':       { uz: 'Yuklashlar', ru: 'Загрузки', en: 'Uploads' },
+    'analytics.toastUploaded': { uz: '🆕 Yangi o\'yin yuklandi: {name}', ru: '🆕 Новая игра загружена: {name}', en: '🆕 New game uploaded: {name}' },
+    'analytics.toastDeleted':  { uz: '🗑️ O\'yin o\'chirildi: {name}', ru: '🗑️ Игра удалена: {name}', en: '🗑️ Game deleted: {name}' },
+
+    // ─── Home page extras ───
+    'home.login': { uz: '🔑 Kirish', ru: '🔑 Войти', en: '🔑 Sign in' },
+    'home.adminBtn': { uz: '⚙️ Admin', ru: '⚙️ Админ', en: '⚙️ Admin' },
+    'home.logoutBtn': { uz: '🚪 Chiqish', ru: '🚪 Выйти', en: '🚪 Logout' },
+    'home.linkCopied': { uz: '🔗 Havola nusxalandi!', ru: '🔗 Ссылка скопирована!', en: '🔗 Link copied!' },
+    'home.copyPrompt': { uz: 'Havolani nusxalang:', ru: 'Скопируйте ссылку:', en: 'Copy the link:' },
+
+    // ─── Upload extras ───
+    'upload.thumbnailMaxSize': { uz: "Rasm 5MB dan katta bo'lmasligi kerak", ru: 'Изображение не должно быть больше 5МБ', en: 'Image must be smaller than 5MB' },
   };
 
   // ─── State ───
@@ -460,11 +552,17 @@ const I18N = (() => {
     onChangeCallbacks.forEach(cb => cb(lang));
   }
 
-  /** Get translation by key */
-  function t(key) {
+  /**
+   * Get translation by key with optional `{name}` placeholder substitution.
+   *   I18N.t('admin.deleteAllConfirm1', { n: 5 }) → "⚠️ BARCHA 5 ta..."
+   */
+  function t(key, vars) {
     const entry = translations[key];
-    if (!entry) return key;
-    return entry[currentLang] || entry[DEFAULT_LANG] || key;
+    let str = entry ? (entry[currentLang] || entry[DEFAULT_LANG] || key) : key;
+    if (vars && typeof vars === 'object') {
+      str = str.replace(/\{(\w+)\}/g, (m, k) => (vars[k] != null ? String(vars[k]) : m));
+    }
+    return str;
   }
 
   /** Get localized field from an object { uz, ru, en } */
@@ -481,6 +579,7 @@ const I18N = (() => {
 
   /** Apply translations to all elements with data-i18n attribute */
   function applyTranslations() {
+    // Strict — replaces full text/value (default)
     document.querySelectorAll('[data-i18n]').forEach(el => {
       const key = el.getAttribute('data-i18n');
       const translation = t(key);
@@ -489,6 +588,13 @@ const I18N = (() => {
       } else {
         el.textContent = translation;
       }
+    });
+
+    // Soft — text-only (for elements with neighbouring icons/emojis preserved
+    // in surrounding text nodes). Treat data-i18n-text exactly like
+    // data-i18n but reserved for inner <span> textContent.
+    document.querySelectorAll('[data-i18n-text]').forEach(el => {
+      el.textContent = t(el.getAttribute('data-i18n-text'));
     });
 
     // Update HTML lang attribute
