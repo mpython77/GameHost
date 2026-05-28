@@ -16,6 +16,7 @@
     currentDays: 30,
     charts: {},
     sse: null,
+    _sseConnected: false,
     refreshDebounce: null,
 
     /** Initialize after admin login is confirmed. */
@@ -33,6 +34,7 @@
       // Re-render on language change so labels translate
       I18N.onChange(() => {
         if (this._lastData) this.renderCharts(this._lastData);
+        this._setSseStatus(this._sseConnected);
       });
 
       this.refresh();
@@ -117,8 +119,8 @@
         ticketUrl: '/api/admin/sse-ticket',
       });
 
-      this.sse.on('open', () => this._setSseStatus(true));
-      this.sse.on('error', () => this._setSseStatus(false));
+      this.sse.on('open', () => { this._sseConnected = true; this._setSseStatus(true); });
+      this.sse.on('error', () => { this._sseConnected = false; this._setSseStatus(false); });
 
       // Domain events → toast + debounced refresh
       const debouncedRefresh = () => {

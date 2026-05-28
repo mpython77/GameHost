@@ -172,7 +172,9 @@
       $('#upload-form').style.display = 'none';
       $('#upload-result').classList.add('visible');
       $('#result-icon').textContent = success ? '✅' : '❌';
-      $('#result-title').textContent = I18N.t(success ? 'upload.success' : 'upload.error');
+      const titleKey = success ? 'upload.success' : 'upload.error';
+      $('#result-title').setAttribute('data-i18n', titleKey);
+      $('#result-title').textContent = I18N.t(titleKey);
       $('#result-text').textContent = message;
       $('#result-text').className = 'result-text' + (success ? '' : ' result-error');
 

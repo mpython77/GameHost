@@ -23,6 +23,7 @@
         if ($('#admin-dashboard').classList.contains('visible')) {
           this.renderTable();
           this.loadStats();
+          this.loadStorage();
         }
       });
 

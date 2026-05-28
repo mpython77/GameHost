@@ -10,16 +10,19 @@
 
   const Player = {
     current: null,
+    errorKind: null,
 
     async init() {
       I18N.init();
       I18N.applyTranslations();
 
       $$('.lang-btn').forEach((btn) => {
-        btn.addEventListener('click', () => {
-          I18N.setLang(btn.dataset.lang);
-          if (this.current) this.updateTitle();
-        });
+        btn.addEventListener('click', () => I18N.setLang(btn.dataset.lang));
+      });
+
+      I18N.onChange(() => {
+        if (this.current) this.updateTitle();
+        if (this.errorKind) this.showLoadError(this.errorKind);
       });
 
       const params = new URLSearchParams(window.location.search);
@@ -69,6 +72,7 @@
      * so the user is never stuck on a dead page.
      */
     showLoadError(kind) {
+      this.errorKind = kind;
       const loading = $('#player-loading');
       if (!loading) return;
       const msg = kind === 'notFound'
