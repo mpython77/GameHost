@@ -91,10 +91,13 @@
 
           Security trade-off: a malicious uploaded game COULD in theory
           read parent.sessionStorage. We mitigate this by:
-            1. Private game folder names are unguessable (slug__token)
-            2. Admin token key is obscure (gamehost_admin_token)
+            1. Private game folder names are unguessable (slug__token).
+            2. Admin token key is obscure (gamehost_admin_token).
             3. The iframe's outbound network is constrained by the
                game's own origin policy.
+            4. Even if the token were read, a malicious game would need
+               a way to exfiltrate it — outbound connections from the
+               iframe are limited by the game's own CSP.
           For high-security setups, host /games/* on a separate origin.
         -->
         <iframe class="player-iframe"
