@@ -129,7 +129,13 @@
 
       grid.innerHTML = games.map((g, i) => this.cardHtml(g, i)).join('');
       grid.querySelectorAll('.game-card').forEach((card) => {
-        card.addEventListener('click', () => {
+        card.addEventListener('click', (e) => {
+          // Clicks on the action controls (play / share) must NOT trigger
+          // the card-level navigation. The card handler is bound on the
+          // card element itself, so it fires while bubbling BEFORE the
+          // document-level share delegate — without this guard, hitting
+          // "share" would navigate to the game instead of sharing.
+          if (e.target.closest('.card-actions')) return;
           window.location.href = 'play.html?game=' + card.dataset.gameId;
         });
       });
