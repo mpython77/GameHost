@@ -582,6 +582,57 @@ const server = app.listen(0, '127.0.0.1', async () => {
     }
   })();
 
+  // ===== Test 28: /api/health/full is admin-gated (no posture leak) =====
+  console.log('\n[FIX] health/full requires admin auth');
+  {
+    const pub = await fetch(base + '/api/health');
+    const pubBody = await pub.json();
+    const full401 = await fetch(base + '/api/health/full');
+    const fullOk = await fetch(base + '/api/health/full', {
+      headers: { 'x-admin-token': token },
+    });
+    if (pub.status === 200 && pubBody.status === 'ok' && pubBody.tempPasswordActive === undefined) {
+      ok('public /api/health stays 200 and hides tempPasswordActive');
+    } else {
+      bad('public health', JSON.stringify(pubBody));
+    }
+    if (full401.status === 401) ok('/api/health/full → 401 without admin token');
+    else bad('health/full gate', `got ${full401.status}`);
+    const fb = await fullOk.json();
+    if (fullOk.status === 200 && 'tempPasswordActive' in fb) {
+      ok('/api/health/full → 200 with admin token (exposes details only to admin)');
+    } else {
+      bad('health/full admin', `${fullOk.status} ${JSON.stringify(fb)}`);
+    }
+  }
+
+  // ===== Test 29: access-log path redaction (no token leak in logs) =====
+  console.log('\n[FIX] access-log redacts secrets in path');
+  {
+    const { safePath } = require('../src/middleware/request-context');
+    const t = 'a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6';
+    const r1 = safePath('/api/games/private/' + t);
+    const r2 = safePath('/games/my-slug__a1b2c3d4e5f6a1b2c3d4e5f6/index.html');
+    if (!r1.includes(t) && r1.includes('<redacted>')) ok('private-token path redacted');
+    else bad('private-token redaction', r1);
+    if (!r2.includes('a1b2c3d4e5f6a1b2c3d4e5f6') && r2.includes('<redacted>')) ok('private folder suffix redacted');
+    else bad('folder redaction', r2);
+    if (safePath('/api/games') === '/api/games') ok('normal path untouched');
+    else bad('normal path', safePath('/api/games'));
+  }
+
+  // ===== Test 30: X-Request-Id is sanitized =====
+  console.log('\n[FIX] X-Request-Id sanitized before reflect');
+  {
+    const good = await fetch(base + '/api/health', { headers: { 'x-request-id': 'corr-12345' } });
+    const evil = await fetch(base + '/api/health', { headers: { 'x-request-id': 'x'.repeat(500) + ' <bad>' } });
+    if (good.headers.get('x-request-id') === 'corr-12345') ok('valid upstream id preserved');
+    else bad('valid id', good.headers.get('x-request-id'));
+    const echoed = evil.headers.get('x-request-id') || '';
+    if (echoed !== 'x'.repeat(500) + ' <bad>' && echoed.length <= 64) ok('oversized/bad id replaced with safe generated id');
+    else bad('bad id not sanitized', echoed.slice(0, 40) + ' len=' + echoed.length);
+  }
+
   // ===== Summary =====
   console.log(`\n  ${pass} pass, ${fail} fail\n`);
   server.close(() => process.exit(fail === 0 ? 0 : 1));

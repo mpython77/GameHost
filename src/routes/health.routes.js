@@ -2,8 +2,9 @@
 
 const express = require('express');
 const config = require('../config');
+const { adminAuth } = require('../middleware/auth');
 
-function buildHealthRouter({ games }) {
+function buildHealthRouter({ games, tokens }) {
   const router = express.Router();
 
   // Lightweight health: must NOT depend on file IO / DB / external state.
@@ -18,9 +19,10 @@ function buildHealthRouter({ games }) {
     });
   });
 
-  // Optional richer endpoint with stateful info (useful for monitoring,
-  // not for healthcheck — exposes DB count which requires reading state).
-  router.get('/full', (req, res) => {
+  // Richer, stateful info for monitoring. ADMIN-ONLY: it exposes internal
+  // counts and whether a temporary admin password is active — that is a
+  // security-posture hint that must not be public.
+  router.get('/full', adminAuth(tokens), (req, res) => {
     let gamesCount = 0;
     try { gamesCount = games.db.count(); } catch { /* ignore */ }
     res.json({
