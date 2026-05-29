@@ -1,6 +1,12 @@
 /**
  * Centralized configuration with environment-variable validation.
- * Loaded once at startup. Throws (and exits) on invalid prod config.
+ * Loaded once at startup.
+ *
+ * NOTE on production credentials: when ADMIN_USERNAME/ADMIN_PASSWORD are
+ * missing in production we DO NOT exit. Instead a one-time random admin
+ * password is generated and logged loudly (see "Production credential
+ * strategy" below). This keeps platform healthchecks green while still
+ * refusing to fall back to the insecure default `admin/admin`.
  */
 
 'use strict';
@@ -118,10 +124,33 @@ const config = Object.freeze({
   // Public URL (optional)
   PUBLIC_BASE_URL: process.env.PUBLIC_BASE_URL || null,
 
+  // Origin from which uploaded games (the /games/* iframe content) are
+  // served. Leave unset to serve games from the SAME origin as the app
+  // (simplest; relies on the iframe `sandbox` attribute for isolation).
+  //
+  // For real isolation, point this at a SEPARATE origin (e.g. a dedicated
+  // subdomain like https://games.example.com that serves the same app).
+  // A cross-origin iframe cannot reach `window.parent`, so a malicious
+  // uploaded game can no longer touch the host page's localStorage / admin
+  // token even with `allow-same-origin` in its sandbox. Trailing slash is
+  // stripped so the frontend can safely concatenate `/games/...`.
+  GAMES_BASE_URL: (process.env.GAMES_BASE_URL || '').replace(/\/+$/, '') || null,
+
   // Limits
   MAX_UPLOAD_SIZE_BYTES: int(process.env.MAX_UPLOAD_SIZE_BYTES, 100 * 1024 * 1024),
   MAX_THUMBNAIL_SIZE_BYTES: int(process.env.MAX_THUMBNAIL_SIZE_BYTES, 5 * 1024 * 1024),
   MAX_GAMES_PER_PAGE: 100,
+
+  // Analytics event-log rotation. The append-only data/events.jsonl is
+  // rolled over once it exceeds EVENTS_LOG_MAX_BYTES; up to
+  // EVENTS_LOG_MAX_FILES historical archives (events.jsonl.1 .. .N) are
+  // kept and re-read on startup so daily aggregates stay complete.
+  EVENTS_LOG_MAX_BYTES: int(process.env.EVENTS_LOG_MAX_BYTES, 10 * 1024 * 1024),
+  EVENTS_LOG_MAX_FILES: int(process.env.EVENTS_LOG_MAX_FILES, 3),
+
+  // Per-IP+game play-count rate limit (per hour). Prevents play-count
+  // inflation from refreshes/bots without blocking legitimate replays.
+  PLAY_RATE_LIMIT: int(process.env.PLAY_RATE_LIMIT, 30),
 
   // Domain constants
   CATEGORIES: ['arcade', 'action', 'puzzle', 'casual', 'strategy'],
