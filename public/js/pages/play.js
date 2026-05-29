@@ -105,7 +105,12 @@
       const iframe = $('#game-iframe');
       const loading = $('#player-loading');
       const v = this.current.uploadedAt || this.current.createdAt || Date.now();
-      const src = `games/${this.current.folder}/index.html?v=${v}`;
+      // Build the game URL. When GH_RUNTIME.gamesBaseUrl is set (a separate
+      // origin), the iframe loads cross-origin and is fully isolated from
+      // this page. When empty, games are served from this same origin.
+      // gamesBaseUrl has no trailing slash (server strips it).
+      const base = (window.GH_RUNTIME && window.GH_RUNTIME.gamesBaseUrl) || '';
+      const src = `${base}/games/${this.current.folder}/index.html?v=${v}`;
       let tracked = false;
 
       iframe.src = src;

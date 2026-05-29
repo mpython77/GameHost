@@ -3,13 +3,15 @@
  *
  *   data/events.jsonl   ←  {type, gameId, ts}\n   per line
  *
- * On startup it scans the log into in-memory daily buckets. New events
- * arriving via the EventBus are both appended to disk (durable) and
- * folded into the live aggregate (cheap reads).
+ * On startup it scans the log (and any rotated archives) into in-memory
+ * daily buckets. New events arriving via the EventBus are both appended to
+ * disk (durable) and folded into the live aggregate (cheap reads).
  *
  * Keeping the file in JSONL keeps the format human-readable, line-safe
- * (a partial trailing write is dropped, not corrupted), and easy to
- * archive/rotate later.
+ * (a partial trailing write is dropped, not corrupted) and trivial to
+ * rotate: once the live file passes `maxBytes` it is rolled over to
+ * events.jsonl.1 (shifting older archives up to events.jsonl.N), bounding
+ * disk usage while preserving recent history across restarts.
  */
 
 'use strict';
@@ -31,11 +33,14 @@ function dayKey(ts) {
 }
 
 class AnalyticsService {
-  constructor({ logFile, bus, games }) {
+  constructor({ logFile, bus, games, maxBytes, maxFiles }) {
     this.logFile = logFile;
     this.bus = bus;
     this.games = games;
-    this._writeStream = null;
+    // Rotation knobs. Defaults are defensive in case the caller omits them.
+    this.maxBytes = Number.isFinite(maxBytes) && maxBytes > 0 ? maxBytes : 10 * 1024 * 1024;
+    this.maxFiles = Number.isFinite(maxFiles) && maxFiles >= 0 ? maxFiles : 3;
+    this._bytesWritten = 0;
     this._daily = new Map(); // "YYYY-MM-DD" → { plays, uploads, deletes }
     this._init();
   }
@@ -43,37 +48,56 @@ class AnalyticsService {
   _init() {
     fs.mkdirSync(path.dirname(this.logFile), { recursive: true });
     this._loadHistorical();
+    this._seedSize();
 
     // Subscribe to bus
     this._unsubscribe = this.bus.subscribe((event) => {
       if (TRACKED_TYPES.has(event.type)) this._record(event);
     });
+  }
 
-    // Open append stream
-    this._writeStream = fs.createWriteStream(this.logFile, { flags: 'a' });
-    this._writeStream.on('error', (err) => {
-      logger.error('analytics.write_stream_error', { error: err.message });
-    });
+  /** Seed the byte counter from the current live file so an already-large
+   *  log rotates on the next append. */
+  _seedSize() {
+    let size = 0;
+    try {
+      if (fs.existsSync(this.logFile)) size = fs.statSync(this.logFile).size;
+    } catch { /* size stays 0 */ }
+    this._bytesWritten = size;
+  }
+
+  _archiveName(n) {
+    return `${this.logFile}.${n}`;
   }
 
   _loadHistorical() {
-    if (!fs.existsSync(this.logFile)) return;
-    try {
-      const raw = fs.readFileSync(this.logFile, 'utf8');
-      const lines = raw.split('\n');
-      let parsed = 0;
-      for (const line of lines) {
-        if (!line.trim()) continue;
-        let evt;
-        try { evt = JSON.parse(line); } catch { continue; }
-        if (!evt || !evt.type || !evt.ts) continue;
-        this._fold(evt);
-        parsed++;
-      }
-      logger.info('analytics.loaded', { events: parsed, daysTracked: this._daily.size });
-    } catch (err) {
-      logger.warn('analytics.load_failed', { error: err.message });
+    // Read oldest archive → newest → live file. Folding is additive so the
+    // order only matters for completeness, not correctness.
+    const files = [];
+    for (let i = this.maxFiles; i >= 1; i--) {
+      const f = this._archiveName(i);
+      if (fs.existsSync(f)) files.push(f);
     }
+    files.push(this.logFile);
+
+    let parsed = 0;
+    for (const file of files) {
+      if (!fs.existsSync(file)) continue;
+      try {
+        const raw = fs.readFileSync(file, 'utf8');
+        for (const line of raw.split('\n')) {
+          if (!line.trim()) continue;
+          let evt;
+          try { evt = JSON.parse(line); } catch { continue; }
+          if (!evt || !evt.type || !evt.ts) continue;
+          this._fold(evt);
+          parsed++;
+        }
+      } catch (err) {
+        logger.warn('analytics.load_failed', { file, error: err.message });
+      }
+    }
+    logger.info('analytics.loaded', { events: parsed, daysTracked: this._daily.size });
   }
 
   _fold(event) {
@@ -95,9 +119,49 @@ class AnalyticsService {
       gameId: event.data && event.data.gameId,
       ts: event.ts,
     }) + '\n';
-    if (this._writeStream && !this._writeStream.destroyed) {
-      this._writeStream.write(line);
+    const bytes = Buffer.byteLength(line);
+    this._maybeRotate(bytes);
+    // Synchronous append: analytics events are low-frequency (human-scale),
+    // and a sync write keeps size-tracking + rotation race-free (an async
+    // stream's lazy file open collides with the synchronous renames).
+    try {
+      fs.appendFileSync(this.logFile, line);
+      this._bytesWritten += bytes;
+    } catch (err) {
+      logger.error('analytics.write_failed', { error: err.message });
     }
+  }
+
+  /**
+   * Roll the live log over once it would exceed maxBytes. Keeps up to
+   * maxFiles archives (events.jsonl.1 .. .N); the oldest is discarded.
+   * In-memory aggregates are untouched, so reads are unaffected.
+   */
+  _maybeRotate(incomingBytes) {
+    if (this.maxBytes <= 0) return;
+    if (this._bytesWritten + incomingBytes <= this.maxBytes) return;
+
+    try {
+      if (this.maxFiles <= 0) {
+        // No archives kept — just truncate by removing the live file.
+        if (fs.existsSync(this.logFile)) fs.unlinkSync(this.logFile);
+      } else {
+        // Discard the oldest archive, then shift .(N-1)→.N ... .1→.2.
+        const oldest = this._archiveName(this.maxFiles);
+        if (fs.existsSync(oldest)) fs.unlinkSync(oldest);
+        for (let i = this.maxFiles - 1; i >= 1; i--) {
+          const src = this._archiveName(i);
+          if (fs.existsSync(src)) fs.renameSync(src, this._archiveName(i + 1));
+        }
+        if (fs.existsSync(this.logFile)) fs.renameSync(this.logFile, this._archiveName(1));
+      }
+      logger.info('analytics.rotated', { maxBytes: this.maxBytes, maxFiles: this.maxFiles });
+    } catch (err) {
+      logger.warn('analytics.rotate_failed', { error: err.message });
+    }
+
+    // Live file is now gone — next append recreates it from zero.
+    this._bytesWritten = 0;
   }
 
   /**
@@ -164,9 +228,7 @@ class AnalyticsService {
 
   close() {
     if (this._unsubscribe) this._unsubscribe();
-    if (this._writeStream && !this._writeStream.destroyed) {
-      try { this._writeStream.end(); } catch { /* ignore */ }
-    }
+    // Writes are synchronous (appendFileSync), so nothing to flush.
   }
 }
 

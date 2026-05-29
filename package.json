@@ -7,7 +7,9 @@
     "start": "node server.js",
     "dev": "NODE_ENV=development node server.js",
     "check": "node --check server.js && find src -name '*.js' -exec node --check {} \\;",
-    "test:smoke": "node scripts/smoke-test.js"
+    "test": "npm run check && npm run test:smoke && npm run test:bugs",
+    "test:smoke": "node scripts/smoke-test.js",
+    "test:bugs": "node scripts/bug-tests.js"
   },
   "engines": {
     "node": ">=18.0.0"

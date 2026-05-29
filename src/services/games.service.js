@@ -16,14 +16,16 @@ const { Mutex } = require('../lib/mutex');
 const { EVENTS } = require('../lib/event-bus');
 
 class GamesService {
-  constructor(db, bus) {
+  constructor(db, bus, mutex) {
     this.db = db;
     this.bus = bus; // optional EventBus
     // Mutex for write operations that involve disk + DB updates.
     // Prevents TOCTOU between fs.renameSync (setPrivacy) and DB update,
     // and between getById and rmRecursive (delete) when concurrent admin
-    // requests target the same game.
-    this._mutex = new Mutex();
+    // requests target the same game. A mutex may be injected so it can be
+    // SHARED with UploadService (upload + setPrivacy + delete all mutate
+    // the same games dir, so they must serialize against each other too).
+    this._mutex = mutex || new Mutex();
   }
 
   _emit(type, data) {

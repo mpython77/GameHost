@@ -7,6 +7,7 @@
 'use strict';
 
 const { rateLimit } = require('express-rate-limit');
+const config = require('../config');
 
 function clientIp(req) {
   // trust-proxy must be set for x-forwarded-for to work upstream
@@ -47,7 +48,11 @@ const privateToken = rateLimit({
 
 const play = rateLimit({
   windowMs: 60 * 60 * 1000,
-  limit: 5,
+  // Per IP+game cap. 5 was too aggressive — a single player reloading a
+  // level or a QA pass would silently stop counting. Default 30/hour still
+  // blocks gross inflation while allowing legitimate replays. Tune via the
+  // PLAY_RATE_LIMIT env.
+  limit: config.PLAY_RATE_LIMIT,
   standardHeaders: 'draft-7',
   legacyHeaders: false,
   // Compound key per IP+gameId so different games don't share counters

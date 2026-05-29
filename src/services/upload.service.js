@@ -19,12 +19,14 @@ const { ValidationError } = require('../lib/errors');
 const { Mutex } = require('../lib/mutex');
 
 class UploadService {
-  constructor(gamesService, bus) {
+  constructor(gamesService, bus, mutex) {
     this.games = gamesService;
     this.bus = bus; // optional EventBus for live updates / analytics
     // Serialize uploads so concurrent ones don't race on the slug allocator
-    // or clobber each other's intermediate folder state.
-    this._mutex = new Mutex();
+    // or clobber each other's intermediate folder state. A mutex may be
+    // injected so it can be SHARED with GamesService (so an upload's folder
+    // allocation can't race a concurrent privacy-rename / delete).
+    this._mutex = mutex || new Mutex();
   }
 
   /**
