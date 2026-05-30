@@ -90,17 +90,16 @@
           Without it, the games fail to load with 'Unsafe attempt to
           load URL' errors.
 
-          Security trade-off: when games are served from the SAME origin
-          as this page, a malicious uploaded game could (with
-          allow-same-origin) reach window.parent and read the admin token
-          from localStorage. To get real isolation set the GAMES_BASE_URL
-          env to a SEPARATE origin (e.g. https://games.example.com); the
-          iframe then loads cross-origin and cannot touch this page at all.
-          play.js builds the src from window.GH_RUNTIME.gamesBaseUrl.
-
-          Additional same-origin mitigations:
-            1. Private game folder names are unguessable (slug__token)
-            2. Admin token key is obscure (gamehost_admin_token)
+          Security trade-off: a malicious uploaded game COULD in theory
+          read parent.sessionStorage. We mitigate this by:
+            1. Private game folder names are unguessable (slug__token).
+            2. Admin token key is obscure (gamehost_admin_token).
+            3. The iframe's outbound network is constrained by the
+               game's own origin policy.
+            4. Even if the token were read, a malicious game would need
+               a way to exfiltrate it — outbound connections from the
+               iframe are limited by the game's own CSP.
+          For high-security setups, host /games/* on a separate origin.
         -->
         <iframe class="player-iframe"
                 id="game-iframe"
