@@ -32,14 +32,25 @@ function buildGamesRouter({ games, qr, tokens }) {
       if (req.query.all === 'true' && req.isAdmin) {
         return res.json(games.adminList());
       }
-      // Public list
+      // Backward compat: when no explicit pagination is requested, return
+      // the FULL public list as a plain array — this is the shape the
+      // catalog (home.js) and player (play.js) rely on. Previously this
+      // path reused the default perPage (30), so once more than 30 public
+      // games existed the older ones silently disappeared from the catalog
+      // and could no longer be found via /api/games.
+      if (!req.query.page && !req.query.perPage) {
+        const full = games.list({
+          ...opts,
+          page: 1,
+          perPage: Number.MAX_SAFE_INTEGER,
+          isPrivate: false,
+        });
+        return res.json(full.items.map((g) => games.publicView(g)));
+      }
+      // Public list (paginated)
       const result = games.list({ ...opts, isPrivate: false });
       // Strip secrets
       const items = result.items.map((g) => games.publicView(g));
-      // Backward compat: if no pagination requested, return plain array
-      if (!req.query.page && !req.query.perPage) {
-        return res.json(items);
-      }
       res.json({ ...result, items });
     } catch (err) { next(err); }
   });
@@ -84,7 +95,15 @@ function buildGamesRouter({ games, qr, tokens }) {
         ? `${baseUrl}/play.html?token=${game.privateToken}`
         : `${baseUrl}/play.html?game=${game.id}`;
 
-      const size = parseInt(req.query.size, 10) || 300;
+      // Clamp the requested pixel size to a sane range. The endpoint is
+      // public (no admin required) and was previously unbounded, so a
+      // request like ?size=999999 could force a huge allocation, and a
+      // non-positive size (?size=0 / ?size=-5) produced a 500. QR codes
+      // are small by nature — 64..1000px covers every legitimate use.
+      const requested = parseInt(req.query.size, 10);
+      const size = Number.isFinite(requested)
+        ? Math.min(1000, Math.max(64, requested))
+        : 300;
       const format = req.query.format === 'svg' ? 'svg' : 'png';
       const { contentType, body } = await qr.render(url, { size, format });
       res.setHeader('Content-Type', contentType);

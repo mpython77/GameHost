@@ -233,6 +233,9 @@
     },
 
     renderGamesList(games) {
+      // Keep the rendered games so other UI (e.g. the QR modal) can look up
+      // a game's privacy/token without an extra request.
+      this._games = games;
       const list = $('#manager-list');
       if (games.length === 0) {
         list.innerHTML = `<div class="manager-empty">${I18N.t('upload.noGames')}</div>`;
@@ -316,10 +319,17 @@
       const overlay = $('#qr-modal-overlay');
       const img = $('#qr-modal-img');
       $('#qr-modal-title').textContent = '📱 ' + name;
+      // For PRIVATE games the shareable link must carry the unguessable
+      // token — showing play.html?game=<id> would point to a 404. Look the
+      // game up in the list we already rendered to build the right URL.
+      const game = (this._games || []).find((g) => g.id === id);
+      const shareUrl = game && game.isPrivate && game.privateToken
+        ? `${window.location.origin}/play.html?token=${game.privateToken}`
+        : `${window.location.origin}/play.html?game=${id}`;
       try {
         const blob = await api.fetchBlob('/api/games/' + id + '/qr?size=300&t=' + Date.now());
         img.src = URL.createObjectURL(blob);
-        $('#qr-modal-url').textContent = `${window.location.origin}/play.html?game=${id}`;
+        $('#qr-modal-url').textContent = shareUrl;
         overlay.classList.add('visible');
         $('#qr-download-btn').onclick = async () => {
           try {
