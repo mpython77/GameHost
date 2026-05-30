@@ -13,7 +13,19 @@ process.env.PORT = '0';
 process.env.LOG_LEVEL = 'error';
 
 const fs = require('fs');
+const os = require('os');
 const path = require('path');
+
+// Hermetic run: use an isolated temp DATA_DIR so the suite is repeatable
+// (the slug-collision assertions need a fresh DB) and never pollutes the
+// repo's ./data. Must be set BEFORE requiring the app — config snapshots
+// env at require time.
+const TEST_DATA_DIR = fs.mkdtempSync(path.join(os.tmpdir(), 'gamehost-test-'));
+process.env.DATA_DIR = TEST_DATA_DIR;
+process.on('exit', () => {
+  try { fs.rmSync(TEST_DATA_DIR, { recursive: true, force: true }); } catch { /* ignore */ }
+});
+
 const { createApp } = require('../src/app');
 
 const app = createApp();
@@ -502,6 +514,73 @@ const server = app.listen(0, '127.0.0.1', async () => {
   } else {
     bad('today bucket', JSON.stringify(todayBucket));
   }
+
+  // ===== Test 26: runtime-config.js exposes games origin =====
+  console.log('\n[FIX] runtime-config.js for iframe isolation');
+  const rcRes = await fetch(base + '/js/runtime-config.js');
+  const rcType = rcRes.headers.get('content-type') || '';
+  const rcBody = await rcRes.text();
+  if (rcRes.status === 200 && /javascript/.test(rcType) &&
+      rcBody.includes('window.GH_RUNTIME') && rcBody.includes('gamesBaseUrl')) {
+    ok('runtime-config.js serves window.GH_RUNTIME.gamesBaseUrl');
+  } else {
+    bad('runtime-config.js', `${rcRes.status} ${rcType} ${rcBody.slice(0, 80)}`);
+  }
+  // play.html embeds runtime-config.js before play.js
+  const playHtml = fs.readFileSync('./public/play.html', 'utf8');
+  if (playHtml.includes('js/runtime-config.js')) {
+    ok('play.html loads runtime-config.js');
+  } else {
+    bad('play.html runtime-config', 'script tag missing');
+  }
+
+  // ===== Test 27: events.jsonl rotation (bounded disk, complete memory) =====
+  console.log('\n[FIX] Analytics event-log rotation');
+  await (async function testRotation() {
+    const { EventBus, EVENTS } = require('../src/lib/event-bus');
+    const { AnalyticsService } = require('../src/services/analytics.service');
+    const rotDir = fs.mkdtempSync(path.join(os.tmpdir(), 'gamehost-rot-'));
+    const rotLog = path.join(rotDir, 'events.jsonl');
+    try {
+      const rbus = new EventBus();
+      const a = new AnalyticsService({
+        logFile: rotLog, bus: rbus, games: { db: { getAll: () => [] } },
+        maxBytes: 300, maxFiles: 2,
+      });
+      for (let i = 0; i < 200; i++) rbus.publish(EVENTS.GAME_PLAYED, { gameId: 'g1' });
+
+      const liveSize = fs.statSync(rotLog).size;
+      const archives = fs.readdirSync(rotDir).filter((f) => /events\.jsonl\.\d+$/.test(f)).length;
+      const memPlays = a.summary({ days: 1 }).summary.rangePlays;
+      a.close();
+
+      // Reload from the retained files (archives + live)
+      const a2 = new AnalyticsService({
+        logFile: rotLog, bus: new EventBus(), games: { db: { getAll: () => [] } },
+        maxBytes: 300, maxFiles: 2,
+      });
+      const reloadPlays = a2.summary({ days: 1 }).summary.rangePlays;
+      a2.close();
+
+      if (liveSize <= 300 && archives === 2) {
+        ok(`live log capped (${liveSize}B ≤ 300B) with ${archives} archives kept`);
+      } else {
+        bad('rotation cap', `liveSize=${liveSize} archives=${archives}`);
+      }
+      if (memPlays === 200) {
+        ok('in-memory aggregate complete despite rotation (200 plays)');
+      } else {
+        bad('in-memory aggregate', `got ${memPlays}`);
+      }
+      if (reloadPlays > 0 && reloadPlays < 200) {
+        ok(`restart preserves recent history from retained files (${reloadPlays} plays)`);
+      } else {
+        bad('reload retention', `got ${reloadPlays} (expected 0 < n < 200)`);
+      }
+    } finally {
+      fs.rmSync(rotDir, { recursive: true, force: true });
+    }
+  })();
 
   // ===== Summary =====
   console.log(`\n  ${pass} pass, ${fail} fail\n`);

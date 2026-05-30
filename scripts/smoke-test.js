@@ -13,6 +13,18 @@ process.env.PORT = process.env.PORT || '0';
 process.env.LOG_LEVEL = 'warn';
 
 const http = require('http');
+const fs = require('fs');
+const os = require('os');
+const path = require('path');
+
+// Run against an isolated temp DATA_DIR so the smoke test leaves no
+// artifacts in the repo. Must be set before requiring the app.
+const TEST_DATA_DIR = fs.mkdtempSync(path.join(os.tmpdir(), 'gamehost-smoke-'));
+process.env.DATA_DIR = TEST_DATA_DIR;
+process.on('exit', () => {
+  try { fs.rmSync(TEST_DATA_DIR, { recursive: true, force: true }); } catch { /* ignore */ }
+});
+
 const { createApp } = require('../src/app');
 
 const app = createApp();

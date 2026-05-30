@@ -24,7 +24,7 @@ GameHost/
 ├── src/
 │   ├── app.js                  # Express app factory
 │   ├── config/                 # env validatsiya, doimiylar
-│   ├── lib/                    # logger, errors, escape, files, zip, slugify, secret-store
+│   ├── lib/                    # logger, errors, files, zip, slugify, secret-store, mutex, event-bus
 │   ├── db/                     # GamesDB (JSON file repository)
 │   ├── services/               # business logic (games, upload, token, qr, storage)
 │   ├── middleware/             # auth, rate-limits, error-handler, no-cache, multer, cors
@@ -78,10 +78,10 @@ Routes hech qachon DB'ga to'g'ridan-to'g'ri tegmaydi.
 | HMAC-signed admin tokenlar (timing-safe) | `src/services/token.service.js` |
 | Token denylist (real logout) | `data/.token-denylist.json` |
 | Persistent ADMIN_SECRET (mode 0600) | `data/.admin-secret` |
-| Default `admin/admin` production'da rad etiladi | `src/config/index.js` |
-| HTML escape XSS oldini olish | `src/lib/escape.js` + `public/js/lib/escape.js` |
+| Default `admin/admin` production'da ishlatilmaydi (yo'q bo'lsa — vaqtinchalik tasodifiy parol) | `src/config/index.js` |
+| HTML escape XSS oldini olish (DOM insertion) | `public/js/lib/escape.js` |
 | Multer fayl turi/hajm cheklovlari | `src/middleware/multer.js` |
-| `iframe sandbox` o'yin sahifasida | `public/play.html` |
+| `iframe sandbox` + ixtiyoriy cross-origin izolyatsiya (`GAMES_BASE_URL`) | `public/play.html` + `src/app.js` |
 
 ---
 
@@ -90,14 +90,18 @@ Routes hech qachon DB'ga to'g'ridan-to'g'ri tegmaydi.
 | Key | Default | Eslatma |
 |---|---|---|
 | `PORT` | `8080` | |
-| `NODE_ENV` | `development` | `production` da default credentials rad etiladi |
+| `NODE_ENV` | `development` | `production`da default `admin/admin` ishlatilmaydi (yo'q bo'lsa vaqtinchalik tasodifiy parol generatsiya qilinadi) |
 | `LOG_LEVEL` | `info` (prod) / `debug` (dev) | trace/debug/info/warn/error/fatal |
 | `ADMIN_USERNAME` | `admin` | production'da MAJBURIY o'zgartirish |
 | `ADMIN_PASSWORD` | `admin` | production'da MAJBURIY o'zgartirish |
 | `ADMIN_SECRET` | (auto-generated) | persistent fayl bilan saqlanadi |
-| `ADMIN_TOKEN_TTL_MS` | `28800000` (8 soat) | |
+| `ADMIN_TOKEN_TTL_MS` | `2592000000` (30 kun) | localStorage'da saqlanadi; qisqaroq sessiya uchun kichikroq qiymat |
 | `DATA_DIR` | `./data` | Railway Volume uchun: `/app/data` |
 | `PUBLIC_BASE_URL` | (auto from request) | reverse proxy ortidagi turli host |
+| `GAMES_BASE_URL` | (unset) | o'yin iframe'ini alohida origin'dan berish (kuchli izolyatsiya) |
+| `EVENTS_LOG_MAX_BYTES` | `10485760` (10MB) | `events.jsonl` rotation chegarasi |
+| `EVENTS_LOG_MAX_FILES` | `3` | saqlanadigan arxiv fayllar soni |
+| `PLAY_RATE_LIMIT` | `30` | har IP+o'yin uchun soatiga sanaladigan o'ynashlar |
 | `MAX_UPLOAD_SIZE_BYTES` | `104857600` (100MB) | |
 | `MAX_THUMBNAIL_SIZE_BYTES` | `5242880` (5MB) | |
 
@@ -149,7 +153,14 @@ Routes hech qachon DB'ga to'g'ridan-to'g'ri tegmaydi.
 ```bash
 npm run check        # node --check syntax tekshiruvi
 npm run test:smoke   # health + auth gates
+npm run test:bugs    # to'liq regression + feature testlari (42 ta)
+npm test             # check + smoke + bugs (CI shu buyruqni ishlatadi)
 ```
+
+Testlar izolyatsiya qilingan vaqtinchalik `DATA_DIR`da ishlaydi — repo'dagi
+`./data`ni ifloslantirmaydi va qayta-qayta ishonchli o'tadi. CI (GitHub
+Actions) har push/PR'da Node 18 va 20'da ishga tushadi
+(`.github/workflows/ci.yml`).
 
 ---
 

@@ -29,6 +29,7 @@ const { StorageService } = require('./services/storage.service');
 const { AnalyticsService } = require('./services/analytics.service');
 const { SseTicketService } = require('./services/sse-ticket.service');
 const { EventBus } = require('./lib/event-bus');
+const { Mutex } = require('./lib/mutex');
 
 const { cors } = require('./middleware/cors');
 const { noCacheApi } = require('./middleware/no-cache');
@@ -67,14 +68,21 @@ function createApp() {
     denylistFile: config.TOKEN_DENYLIST_FILE,
   });
   const sseTickets = new SseTicketService();
-  const games = new GamesService(db, bus);
-  const uploads = new UploadService(games, bus);
+  // Single write-mutex shared by GamesService and UploadService. Upload,
+  // setPrivacy and delete all touch the same on-disk games dir + DB; a
+  // shared lock prevents an in-flight upload's folder allocation from
+  // racing a concurrent privacy-rename or delete.
+  const writeMutex = new Mutex();
+  const games = new GamesService(db, bus, writeMutex);
+  const uploads = new UploadService(games, bus, writeMutex);
   const qr = new QRService();
   const storage = new StorageService();
   const analytics = new AnalyticsService({
     logFile: config.EVENTS_LOG_FILE,
     bus,
     games,
+    maxBytes: config.EVENTS_LOG_MAX_BYTES,
+    maxFiles: config.EVENTS_LOG_MAX_FILES,
   });
 
   // ─── Express app ───
@@ -104,6 +112,11 @@ function createApp() {
   // resources that our strict CSP would block. The /games/* iframe is
   // still security-isolated by the sandbox attribute on play.html and
   // by unguessable folder names for private games.
+  //
+  // When GAMES_BASE_URL points games at a separate origin, that origin
+  // must be whitelisted in frame-src so the play page can embed it.
+  const gamesFrameSrc = ["'self'"];
+  if (config.GAMES_BASE_URL) gamesFrameSrc.push(config.GAMES_BASE_URL);
   const helmetMiddleware = helmet({
     contentSecurityPolicy: {
       useDefaults: false,
@@ -117,7 +130,7 @@ function createApp() {
         'img-src':     ["'self'", 'data:', 'blob:'],
         'font-src':    ["'self'", 'data:'],
         'connect-src': ["'self'"],
-        'frame-src':   ["'self'"],
+        'frame-src':   gamesFrameSrc,
         'frame-ancestors': ["'self'"],
         'base-uri': ["'self'"],
         'form-action': ["'self'"],
@@ -169,6 +182,19 @@ function createApp() {
     res.sendFile(config.LEGACY_CONFIG_FILE, (err) => {
       if (err) res.status(404).send('// games-config.js not yet generated');
     });
+  });
+
+  // Runtime config exposed to the browser. Currently only the games origin,
+  // used by play.js to build the iframe src. Kept tiny and dependency-free
+  // so it can be inlined/cached aggressively if needed.
+  app.get('/js/runtime-config.js', (req, res) => {
+    res.setHeader('Content-Type', 'application/javascript; charset=utf-8');
+    res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+    const gamesBaseUrl = config.GAMES_BASE_URL || '';
+    res.send(
+      `/* AUTO-GENERATED runtime config. */\n` +
+      `window.GH_RUNTIME = Object.freeze(${JSON.stringify({ gamesBaseUrl })});\n`
+    );
   });
   app.use('/js', express.static(path.join(config.PUBLIC_DIR, 'js'), staticOpts));
 
