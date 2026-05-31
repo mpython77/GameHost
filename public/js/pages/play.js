@@ -183,22 +183,39 @@
           }
         }, 100);
       });
+
+      // Recalculate on orientation change (mobile rotation)
+      window.addEventListener('orientationchange', () => {
+        setTimeout(() => {
+          const active = $('.res-btn.active');
+          if (active && active.dataset.ratio !== 'auto') {
+            this.applyResolution(active.dataset.ratio, ratios[active.dataset.ratio]);
+          }
+        }, 300);
+      });
     },
 
     applyResolution(name, ratio) {
       const c = $('#iframe-container');
       const w = $('#player-frame-wrapper');
+      // Reset first
       c.style.width = c.style.height = c.style.maxWidth = c.style.maxHeight = c.style.aspectRatio = '';
       c.classList.remove('resolution-active');
       if (name === 'auto' || !ratio) return;
 
       c.classList.add('resolution-active');
       const r = w.getBoundingClientRect();
+      const maxW = r.width * 0.95;
+      const maxH = r.height * 0.95;
       let width, height;
-      height = r.height * 0.95;
-      width = height * ratio;
-      if (width > r.width * 0.95) {
-        width = r.width * 0.95;
+      // Fit within available area while maintaining aspect ratio
+      if (maxW / maxH > ratio) {
+        // Height-constrained
+        height = maxH;
+        width = height * ratio;
+      } else {
+        // Width-constrained
+        width = maxW;
         height = width / ratio;
       }
       c.style.width = Math.round(width) + 'px';

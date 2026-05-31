@@ -770,6 +770,7 @@ ul, ol {
 .player-page {
   width: 100vw;
   height: 100vh;
+  height: 100dvh; /* Modern browsers: accounts for mobile address bar */
   display: flex;
   flex-direction: column;
   background: #000;
@@ -854,6 +855,8 @@ ul, ol {
   display: flex;
   align-items: center;
   justify-content: center;
+  min-height: 0; /* Important: allows flex child to shrink below content size */
+  padding-bottom: env(safe-area-inset-bottom, 0px);
 }
 
 .player-iframe {
@@ -1079,6 +1082,7 @@ ul, ol {
   .player-toolbar {
     flex-wrap: wrap;
     height: auto;
+    min-height: 48px;
     padding: var(--space-sm);
     gap: var(--space-sm);
   }
@@ -1095,6 +1099,7 @@ ul, ol {
     overflow-x: auto;
     scrollbar-width: none;
     padding-bottom: 2px;
+    -webkit-overflow-scrolling: touch;
   }
   .player-toolbar-center::-webkit-scrollbar {
     display: none;
@@ -1110,9 +1115,44 @@ ul, ol {
 @media (max-width: 900px) {
   .toolbar-btn, .lang-btn, .mobile-menu-btn, .filter-tab {
     min-height: 44px;
+    min-width: 44px;
     display: flex;
     align-items: center;
     justify-content: center;
+  }
+  .res-btn {
+    min-height: 36px;
+  }
+}
+
+/* Landscape mobile: maximize game area */
+@media (max-height: 500px) and (orientation: landscape) {
+  .player-toolbar {
+    height: 40px;
+    min-height: 40px;
+    padding: 4px var(--space-sm);
+    flex-wrap: nowrap;
+    gap: var(--space-sm);
+  }
+  .player-toolbar-center {
+    display: none;
+  }
+  .player-game-title {
+    max-width: 120px;
+    font-size: var(--font-xs);
+  }
+  .toolbar-btn {
+    width: 34px;
+    height: 34px;
+    min-height: 34px;
+    min-width: 34px;
+  }
+  .back-btn {
+    min-height: 34px;
+    padding: 4px 10px;
+  }
+  .player-toolbar .lang-switcher {
+    display: none;
   }
 }
 
@@ -1372,6 +1412,9 @@ ul, ol {
   .player-toolbar {
     padding-left: calc(var(--space-md) + env(safe-area-inset-left));
     padding-right: calc(var(--space-md) + env(safe-area-inset-right));
+  }
+  .player-frame-wrapper {
+    padding-bottom: env(safe-area-inset-bottom, 0px);
   }
   .mobile-menu {
     padding-bottom: calc(var(--space-xl) + env(safe-area-inset-bottom));
