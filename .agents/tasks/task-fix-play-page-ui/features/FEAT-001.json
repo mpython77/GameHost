@@ -31,5 +31,5 @@
     "source /root/.nvm/nvm.sh && nvm use 22 && npm run check"
   ],
   "blocked_reason": null,
-  "findings": "All tests pass (55 pass, 0 fail). The applyResolution logic was previously height-first which could overflow width on portrait ratios; now properly checks both dimensions. The 100dvh property has wide browser support but falls back to 100vh for older browsers."
+  "findings": "All tests pass (55 pass, 0 fail). The applyResolution logic was previously height-first which could overflow width on portrait ratios; now properly checks both dimensions. The 100dvh property has wide browser support but falls back to 100vh for older browsers. Review fixes applied: removed redundant orientationchange listener, bumped landscape toolbar buttons to 40px, documented intentional landscape resolution selector hiding, removed duplicate safe-area padding."
 }
