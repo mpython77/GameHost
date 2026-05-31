@@ -207,40 +207,72 @@
     applyResolution(name, ratio) {
       const c = $('#iframe-container');
       const w = $('#player-frame-wrapper');
-      // Reset first
+      const iframe = $('#game-iframe');
+      // Reset any inline sizing/transform from a previous selection.
       c.style.width = c.style.height = c.style.maxWidth = c.style.maxHeight = c.style.aspectRatio = '';
+      iframe.style.width = iframe.style.height = iframe.style.transform = '';
       c.classList.remove('resolution-active');
 
       if (name === 'auto' || !ratio) {
-        // Back to full-area: let the game refit to the whole wrapper.
+        // Auto: iframe fills the whole wrapper (CSS handles 100%/100%).
         this.notifyGameResize();
         return;
       }
 
       c.classList.add('resolution-active');
-      const r = w.getBoundingClientRect();
-      const maxW = r.width * 0.95;
-      const maxH = r.height * 0.95;
-      let width, height;
-      // Fit within available area while maintaining aspect ratio
-      if (maxW / maxH > ratio) {
-        // Height-constrained
-        height = maxH;
-        width = height * ratio;
-      } else {
-        // Width-constrained
-        width = maxW;
-        height = width / ratio;
-      }
-      c.style.width = Math.round(width) + 'px';
-      c.style.height = Math.round(height) + 'px';
 
-      // The container box resized, but many HTML5/Cocos playable ads only
-      // refit their canvas when their OWN window receives a 'resize'. When we
-      // change the iframe box via CSS the browser doesn't always deliver that
-      // reliably (especially mid CSS-transition), so the game keeps its old
-      // size and overflows the smaller box. Force it to refit.
+      // Available area inside the wrapper (minus a small gutter so the
+      // framed game never touches the toolbar / screen edges).
+      const r = w.getBoundingClientRect();
+      const availW = Math.max(1, r.width - 16);
+      const availH = Math.max(1, r.height - 16);
+
+      // Final on-screen box that preserves the requested aspect ratio and
+      // fits entirely within the available area (letterboxed, never cropped).
+      let boxW, boxH;
+      if (availW / availH > ratio) {
+        // Area is wider than target → height-constrained.
+        boxH = availH;
+        boxW = boxH * ratio;
+      } else {
+        // Area is taller/narrower than target → width-constrained.
+        boxW = availW;
+        boxH = boxW / ratio;
+      }
+      boxW = Math.round(boxW);
+      boxH = Math.round(boxH);
+
+      // Render the iframe at a real DESIGN resolution for this ratio, then
+      // scale the whole iframe (game canvas included) down to the box. This
+      // makes the game visually shrink/grow to fit even when it doesn't
+      // listen for resize events — the previous approach only resized the
+      // box and left the game rendering at its native size (overflowing to
+      // the top-left, which looked "stuck in the corner / not shrinking").
+      const designW = Math.round(this._designWidthFor(ratio));
+      const designH = Math.round(designW / ratio);
+      const scale = Math.min(boxW / designW, boxH / designH);
+
+      c.style.width = boxW + 'px';
+      c.style.height = boxH + 'px';
+      iframe.style.width = designW + 'px';
+      iframe.style.height = designH + 'px';
+      iframe.style.transform = `scale(${scale})`;
+
+      // Also nudge resize-aware games to re-fit to the (scaled) iframe.
       this.notifyGameResize();
+    },
+
+    /**
+     * Pick a sensible design resolution width for a given aspect ratio so the
+     * scaled iframe renders crisply. Landscape ratios get ~1280px wide,
+     * portrait/square get a height-normalized width. The exact value doesn't
+     * matter much (it's scaled to fit) — it just needs to be a reasonable
+     * canvas size for the embedded game to lay out against.
+     */
+    _designWidthFor(ratio) {
+      const BASE = 1280;             // landscape baseline width
+      if (ratio >= 1) return BASE;   // landscape / square
+      return Math.round(BASE * ratio); // portrait: keep height ~= BASE
     },
 
     /**
@@ -269,20 +301,46 @@
       setTimeout(fire, 460); // after the CSS width/height transition (~0.4s)
     },
 
+    /** Current fullscreen element across vendor prefixes (null if not fullscreen). */
+    fullscreenElement() {
+      return document.fullscreenElement ||
+        document.webkitFullscreenElement ||
+        document.msFullscreenElement ||
+        null;
+    },
+
     toggleFullscreen() {
       const w = $('#player-frame-wrapper');
-      if (!document.fullscreenElement) {
-        (w.requestFullscreen || w.webkitRequestFullscreen || w.msRequestFullscreen).call(w);
+      if (!this.fullscreenElement()) {
+        // Some browsers (notably iOS Safari) don't implement the Fullscreen
+        // API on arbitrary elements — the request fn is simply absent. Guard
+        // against calling `undefined` (which threw an uncaught TypeError and
+        // left the button dead). Fall back to fullscreen on the <iframe> if
+        // the wrapper can't go fullscreen.
+        const req = w.requestFullscreen || w.webkitRequestFullscreen || w.msRequestFullscreen;
+        if (req) {
+          try { Promise.resolve(req.call(w)).catch(() => {}); } catch { /* unsupported */ }
+        } else {
+          const iframe = $('#game-iframe');
+          const ireq = iframe && (iframe.requestFullscreen || iframe.webkitRequestFullscreen ||
+            iframe.webkitEnterFullscreen);
+          if (ireq) { try { ireq.call(iframe); } catch { /* unsupported */ } }
+        }
       } else {
-        (document.exitFullscreen || document.webkitExitFullscreen || document.msExitFullscreen).call(document);
+        const exit = document.exitFullscreen || document.webkitExitFullscreen || document.msExitFullscreen;
+        if (exit) {
+          try { Promise.resolve(exit.call(document)).catch(() => {}); } catch { /* unsupported */ }
+        }
       }
     },
 
     setupKeyboard() {
       document.addEventListener('keydown', (e) => {
         if (e.key === 'Escape') {
-          const page = $('#player-page');
-          if (page && page.classList.contains('fullscreen')) this.toggleFullscreen();
+          // If the browser is in fullscreen, let it exit (the browser also
+          // handles Escape natively, but being explicit avoids navigating
+          // away mid-exit). Otherwise go back to the catalog.
+          if (this.fullscreenElement()) this.toggleFullscreen();
           else window.location.href = 'index.html';
         } else if (e.key === 'f' || e.key === 'F') {
           this.toggleFullscreen();

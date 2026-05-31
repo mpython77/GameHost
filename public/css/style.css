@@ -1017,16 +1017,28 @@ ul, ol {
 }
 
 .iframe-container.resolution-active {
-  /* Explicit width/height set by JS — centering is handled by parent flex */
+  /* Fixed-ratio mode: the container is sized by JS to the SCALED footprint
+     of the game, and the iframe inside is rendered at a real design
+     resolution then transform-scaled to fit. `display:block` (not flex) so
+     the scaled iframe — anchored top-left — fills the box exactly, and
+     `margin:auto` keeps the whole box centered inside the flex wrapper. */
+  display: block;
   margin: auto;
-}
-
-.iframe-container.resolution-active .player-iframe {
+  flex: 0 0 auto;
+  overflow: hidden;
   border-radius: var(--radius-md);
+  background: #000;
   box-shadow:
     0 0 0 1px var(--border-accent),
     0 0 40px rgba(124, 58, 237, 0.15),
     0 8px 32px rgba(0, 0, 0, 0.6);
+}
+
+.iframe-container.resolution-active .player-iframe {
+  /* width/height (design resolution) + transform scale set inline by JS */
+  transform-origin: top left;
+  border-radius: inherit;
+  transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 /* ---------- Resolution Info Badge ---------- */

@@ -633,6 +633,56 @@ const server = app.listen(0, '127.0.0.1', async () => {
     else bad('bad id not sanitized', echoed.slice(0, 40) + ' len=' + echoed.length);
   }
 
+  // ===== Test 31: Oversized thumbnail rejected server-side =====
+  console.log('\n[FIX] Thumbnail size limit enforced server-side');
+  {
+    // The client enforces a 5MB cap, but the API must too — multer only has
+    // a single global fileSize cap (100MB) for ALL files. A >5MB thumbnail
+    // sent directly to the API must be rejected (game still uploads, but
+    // without the oversized thumbnail — non-fatal by design).
+    const maxThumb = app.locals.config.MAX_THUMBNAIL_SIZE_BYTES;
+    const bigThumb = Buffer.alloc(maxThumb + 1024, 0x61); // > limit
+    const tfd = new FormData();
+    tfd.append('gameFile',
+      new Blob([fs.readFileSync('./scripts/_fixtures/test-game.html')], { type: 'text/html' }),
+      'thumbtest.html');
+    tfd.append('thumbnail', new Blob([bigThumb], { type: 'image/png' }), 'huge.png');
+    tfd.append('gameName_uz', 'Thumb Limit');
+    tfd.append('gameName_en', 'Thumb Limit');
+    tfd.append('category', 'arcade');
+    tfd.append('isPrivate', 'false');
+    const tr = await fetch(base + '/api/upload', {
+      method: 'POST', headers: { 'x-admin-token': token }, body: tfd,
+    });
+    const tBody = await tr.json();
+    if (tr.status === 200 && tBody.success && (tBody.game.thumbnail == null)) {
+      ok('oversized thumbnail dropped, game still uploaded without it');
+    } else {
+      bad('oversized thumbnail', `${tr.status} thumbnail=${tBody.game && tBody.game.thumbnail}`);
+    }
+
+    // A small thumbnail under the limit must still be stored.
+    const smallThumb = Buffer.alloc(1024, 0x61);
+    const sfd = new FormData();
+    sfd.append('gameFile',
+      new Blob([fs.readFileSync('./scripts/_fixtures/test-game.html')], { type: 'text/html' }),
+      'thumbok.html');
+    sfd.append('thumbnail', new Blob([smallThumb], { type: 'image/png' }), 'ok.png');
+    sfd.append('gameName_uz', 'Thumb OK');
+    sfd.append('gameName_en', 'Thumb OK');
+    sfd.append('category', 'arcade');
+    sfd.append('isPrivate', 'false');
+    const sr = await fetch(base + '/api/upload', {
+      method: 'POST', headers: { 'x-admin-token': token }, body: sfd,
+    });
+    const sBody = await sr.json();
+    if (sr.status === 200 && sBody.success && sBody.game.thumbnail) {
+      ok(`under-limit thumbnail stored: ${sBody.game.thumbnail}`);
+    } else {
+      bad('valid thumbnail', `${sr.status} thumbnail=${sBody.game && sBody.game.thumbnail}`);
+    }
+  }
+
   // ===== Summary =====
   console.log(`\n  ${pass} pass, ${fail} fail\n`);
   server.close(() => process.exit(fail === 0 ? 0 : 1));
