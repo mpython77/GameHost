@@ -212,8 +212,9 @@
       c.style.width = c.style.height = c.style.maxWidth = c.style.maxHeight = c.style.aspectRatio = '';
       iframe.style.width = iframe.style.height = iframe.style.transform = '';
       c.classList.remove('resolution-active');
+      this._activeRatio = (name === 'auto' || !ratio) ? null : ratio;
 
-      if (name === 'auto' || !ratio) {
+      if (!this._activeRatio) {
         // Auto: iframe fills the whole wrapper (CSS handles 100%/100%).
         this.notifyGameResize();
         return;
@@ -231,48 +232,106 @@
       // fits entirely within the available area (letterboxed, never cropped).
       let boxW, boxH;
       if (availW / availH > ratio) {
-        // Area is wider than target → height-constrained.
         boxH = availH;
         boxW = boxH * ratio;
       } else {
-        // Area is taller/narrower than target → width-constrained.
         boxW = availW;
         boxH = boxW / ratio;
       }
       boxW = Math.round(boxW);
       boxH = Math.round(boxH);
 
-      // Render the iframe at a real DESIGN resolution for this ratio, then
-      // scale the whole iframe (game canvas included) down to the box. This
-      // makes the game visually shrink/grow to fit even when it doesn't
-      // listen for resize events — the previous approach only resized the
-      // box and left the game rendering at its native size (overflowing to
-      // the top-left, which looked "stuck in the corner / not shrinking").
-      const designW = Math.round(this._designWidthFor(ratio));
-      const designH = Math.round(designW / ratio);
-      const scale = Math.min(boxW / designW, boxH / designH);
-
+      // The visible frame (container) is exactly the aspect-ratio box and is
+      // centered by the flex wrapper (+ margin:auto). The GAME inside is fit
+      // by _fitGameToBox(), which handles BOTH game types:
+      //   • responsive games  → iframe element is sized to the box; the game
+      //     re-lays-out to fill it (a 'resize' is dispatched).
+      //   • fixed-size games  → the iframe is sized to the game's intrinsic
+      //     content size, then transform-scaled so the WHOLE game fits the
+      //     box (no clipping, no internal scrollbars).
       c.style.width = boxW + 'px';
       c.style.height = boxH + 'px';
-      iframe.style.width = designW + 'px';
-      iframe.style.height = designH + 'px';
-      iframe.style.transform = `scale(${scale})`;
-
-      // Also nudge resize-aware games to re-fit to the (scaled) iframe.
-      this.notifyGameResize();
+      this._fitGameToBox(boxW, boxH);
     },
 
     /**
-     * Pick a sensible design resolution width for a given aspect ratio so the
-     * scaled iframe renders crisply. Landscape ratios get ~1280px wide,
-     * portrait/square get a height-normalized width. The exact value doesn't
-     * matter much (it's scaled to fit) — it just needs to be a reasonable
-     * canvas size for the embedded game to lay out against.
+     * Fit the embedded game into a boxW×boxH frame.
+     *
+     * Strategy:
+     *   1. First make the iframe element exactly the box size and ask the
+     *      game to re-fit (covers responsive/Cocos games — no scaling needed).
+     *   2. Then, for SAME-ORIGIN games, measure the real rendered content
+     *      size. If it overflows the box (a fixed-size game that ignored the
+     *      resize), size the iframe to the content's natural dimensions and
+     *      apply transform:scale so the entire game is shrunk to fit the box.
+     *      Cross-origin games can't be measured → they keep the box-sized
+     *      iframe and rely on their own resize handling.
      */
-    _designWidthFor(ratio) {
-      const BASE = 1280;             // landscape baseline width
-      if (ratio >= 1) return BASE;   // landscape / square
-      return Math.round(BASE * ratio); // portrait: keep height ~= BASE
+    _fitGameToBox(boxW, boxH) {
+      const iframe = $('#game-iframe');
+      if (!iframe) return;
+
+      // Step 1 — iframe element fills the box; nudge resize-aware games.
+      iframe.style.width = boxW + 'px';
+      iframe.style.height = boxH + 'px';
+      iframe.style.transform = '';
+      iframe.style.transformOrigin = 'top left';
+      this.notifyGameResize();
+
+      // Step 2 — after the game has had a moment to lay out, check whether it
+      // actually filled the box (responsive) or stayed at a fixed size that
+      // overflows (needs scaling). Re-checked after the CSS transition too.
+      const measureAndScale = () => {
+        // Only the currently-active ratio frame should be adjusted.
+        if (!this._activeRatio) return;
+        let doc;
+        try {
+          doc = iframe.contentDocument;
+        } catch {
+          doc = null; // cross-origin — cannot measure, leave box-sized.
+        }
+        if (!doc || !doc.documentElement) return;
+
+        // Intrinsic content size the game wants to occupy.
+        const de = doc.documentElement;
+        const body = doc.body;
+        const contentW = Math.max(
+          de.scrollWidth, body ? body.scrollWidth : 0,
+          de.offsetWidth, body ? body.offsetWidth : 0
+        );
+        const contentH = Math.max(
+          de.scrollHeight, body ? body.scrollHeight : 0,
+          de.offsetHeight, body ? body.offsetHeight : 0
+        );
+        if (!contentW || !contentH) return;
+
+        // Tolerance: if the content already fits the box (responsive game
+        // that filled it), leave the simple box-sized iframe alone.
+        if (contentW <= boxW + 2 && contentH <= boxH + 2) {
+          iframe.style.width = boxW + 'px';
+          iframe.style.height = boxH + 'px';
+          iframe.style.transform = '';
+          return;
+        }
+
+        // Fixed-size (or oversized) game → render the iframe at the game's
+        // natural size and scale the whole thing down to fit the box.
+        const scale = Math.min(boxW / contentW, boxH / contentH);
+        iframe.style.width = contentW + 'px';
+        iframe.style.height = contentH + 'px';
+        iframe.style.transform = `scale(${scale})`;
+        // Center the scaled content within the box: the scaled footprint is
+        // contentW*scale × contentH*scale; offset by the leftover halves.
+        const offX = Math.max(0, (boxW - contentW * scale) / 2);
+        const offY = Math.max(0, (boxH - contentH * scale) / 2);
+        iframe.style.transformOrigin = 'top left';
+        iframe.style.transform = `translate(${offX}px, ${offY}px) scale(${scale})`;
+      };
+
+      // Measure a few times: immediately-ish, and after the box transition,
+      // so late-laying-out games are caught.
+      setTimeout(measureAndScale, 90);
+      setTimeout(measureAndScale, 480);
     },
 
     /**
