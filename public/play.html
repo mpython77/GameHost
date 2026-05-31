@@ -9,9 +9,9 @@
   <link rel="stylesheet" href="css/style.css">
   <link rel="stylesheet" href="css/enhance.css">
   <style>
-    /* Player page — small-screen tweaks (page-specific only) */
+    /* Player page — small-screen tweaks (page-specific overrides) */
     @media (max-width: 480px) {
-      .player-toolbar { height: auto; min-height: 48px; padding: 6px var(--space-sm); gap: 4px; flex-wrap: wrap; }
+      .player-toolbar { min-height: 48px; padding: 6px var(--space-sm); gap: 4px; }
       .player-toolbar-left { flex: 1; min-width: 0; }
       .player-toolbar-right { display: flex; align-items: center; gap: 4px; }
       .player-toolbar-right .lang-switcher { display: flex !important; padding: 2px; }
@@ -20,7 +20,7 @@
       .player-toolbar-center { order: 3; width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none; padding-bottom: 2px; }
       .player-toolbar-center::-webkit-scrollbar { display: none; }
       .resolution-selector { width: max-content; min-width: 100%; justify-content: center; }
-      .res-btn { padding: 5px 8px; font-size: 11px; }
+      .res-btn { padding: 5px 8px; font-size: 11px; min-height: 36px; }
     }
     @media (max-width: 360px) {
       .back-btn span[data-i18n] { display: none; }

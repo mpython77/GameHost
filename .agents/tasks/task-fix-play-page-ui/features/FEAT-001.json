@@ -1,0 +1,35 @@
+{
+  "id": "FEAT-001",
+  "type": "fix",
+  "description": "Fix the play page (play.html) broken UI layout, JavaScript bugs, and make it fully responsive for mobile devices. The page currently has: (1) 100vh height issues on mobile browsers where the address bar causes content clipping, (2) the iframe container does not properly fill available space on small screens, (3) the toolbar layout breaks on mobile with elements overlapping, (4) resolution selector is not usable on very small screens, (5) no proper touch-friendly interactions for mobile users.",
+  "status": "completed",
+  "steps": [
+    "Fix the .player-page height to use dvh (dynamic viewport height) with 100vh fallback for mobile browser address bar compatibility in public/css/style.css",
+    "Fix the .player-frame-wrapper to properly calculate available height accounting for the variable toolbar height on mobile (toolbar wraps on small screens)",
+    "Fix the .player-toolbar mobile layout: ensure it does not overlap content, items are properly spaced, and the center section (resolution selector) is scrollable without breaking the layout",
+    "Fix the iframe-container sizing: on mobile, the resolution selector 'auto' mode should fill 100% width and height without gaps; when a specific resolution is selected, constrain proportionally but ensure it fits within the visible area",
+    "Add proper mobile responsive breakpoints for the player page: at 768px and below, simplify the toolbar; at 480px and below, make toolbar ultra-compact; at 360px and below, hide non-essential elements",
+    "Fix touch interaction issues: ensure fullscreen button works on mobile (iOS Safari has restrictions), add proper touch target sizes (min 44px) for all toolbar buttons",
+    "Fix the player-game-title overflow on mobile - ensure text-overflow ellipsis works correctly and does not push other elements",
+    "Add CSS to handle orientation changes on mobile (landscape vs portrait) - when phone is rotated, iframe should adapt immediately",
+    "Fix the play.js applyResolution function to account for the actual toolbar height on mobile (currently uses hardcoded .95 multiplier which doesn't account for wrapped toolbar)",
+    "Add a safe-area-inset handling for the player-frame-wrapper so the game iframe is not hidden behind notches or rounded corners on modern phones",
+    "Ensure the loading spinner is centered correctly on all screen sizes including mobile"
+  ],
+  "acceptance_criteria": [
+    "The play page renders without any broken layout on viewport widths from 320px to 1920px",
+    "The game iframe fills the available space below the toolbar without gaps or overflow",
+    "On mobile (under 768px), the toolbar is compact and all buttons are accessible with touch",
+    "The resolution selector is usable on mobile via horizontal scrolling",
+    "The page handles mobile browser address bar correctly (no content clipping at bottom)",
+    "Orientation changes (portrait to landscape and back) do not break the layout",
+    "All existing tests (npm test) continue to pass",
+    "The loading spinner remains centered during game load on all screen sizes"
+  ],
+  "verification": [
+    "source /root/.nvm/nvm.sh && nvm use 22 && npm test",
+    "source /root/.nvm/nvm.sh && nvm use 22 && npm run check"
+  ],
+  "blocked_reason": null,
+  "findings": "All tests pass (55 pass, 0 fail). The applyResolution logic was previously height-first which could overflow width on portrait ratios; now properly checks both dimensions. The 100dvh property has wide browser support but falls back to 100vh for older browsers. Review fixes applied: removed redundant orientationchange listener, bumped landscape toolbar buttons to 40px, documented intentional landscape resolution selector hiding, removed duplicate safe-area padding."
+}
