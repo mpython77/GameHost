@@ -1035,7 +1035,8 @@ ul, ol {
 }
 
 .iframe-container.resolution-active .player-iframe {
-  /* width/height (design resolution) + transform scale set inline by JS */
+  /* width/height + transform are set inline by JS (_fitGameToBox). The frame
+     clips any overflow so a fixed-size game scaled to fit shows no scrollbars. */
   transform-origin: top left;
   border-radius: inherit;
   transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
