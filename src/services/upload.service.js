@@ -107,6 +107,16 @@ class UploadService {
         if (!config.ALLOWED_IMAGE_EXTS.includes(thumbExt)) {
           throw new ValidationError('Thumbnail formati noto\'g\'ri');
         }
+        // Enforce the thumbnail size limit server-side. Multer only applies a
+        // single global fileSize cap (MAX_UPLOAD_SIZE_BYTES) to ALL files, so
+        // without this check a caller hitting the API directly could store a
+        // 100MB "thumbnail" inside the game folder — the client-side 5MB check
+        // is trivially bypassable. Mirrors MAX_THUMBNAIL_SIZE_BYTES / README.
+        if (thumbnailFile.size > config.MAX_THUMBNAIL_SIZE_BYTES) {
+          throw new ValidationError(
+            `Thumbnail juda katta (max ${Math.round(config.MAX_THUMBNAIL_SIZE_BYTES / (1024 * 1024))}MB)`
+          );
+        }
         thumbnailName = `thumbnail${thumbExt}`;
         fs.copyFileSync(thumbnailFile.path, path.join(gameDir, thumbnailName));
       } catch (err) {
