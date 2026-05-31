@@ -856,7 +856,6 @@ ul, ol {
   align-items: center;
   justify-content: center;
   min-height: 0; /* Important: allows flex child to shrink below content size */
-  padding-bottom: env(safe-area-inset-bottom, 0px);
 }
 
 .player-iframe {
@@ -1134,6 +1133,8 @@ ul, ol {
     flex-wrap: nowrap;
     gap: var(--space-sm);
   }
+  /* Intentionally hidden in landscape: vertical space is too limited to show
+     the resolution selector. Users can rotate back to portrait to access it. */
   .player-toolbar-center {
     display: none;
   }
@@ -1142,13 +1143,13 @@ ul, ol {
     font-size: var(--font-xs);
   }
   .toolbar-btn {
-    width: 34px;
-    height: 34px;
-    min-height: 34px;
-    min-width: 34px;
+    width: 40px;
+    height: 40px;
+    min-height: 40px;
+    min-width: 40px;
   }
   .back-btn {
-    min-height: 34px;
+    min-height: 40px;
     padding: 4px 10px;
   }
   .player-toolbar .lang-switcher {

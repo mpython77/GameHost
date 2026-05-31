@@ -183,16 +183,6 @@
           }
         }, 100);
       });
-
-      // Recalculate on orientation change (mobile rotation)
-      window.addEventListener('orientationchange', () => {
-        setTimeout(() => {
-          const active = $('.res-btn.active');
-          if (active && active.dataset.ratio !== 'auto') {
-            this.applyResolution(active.dataset.ratio, ratios[active.dataset.ratio]);
-          }
-        }, 300);
-      });
     },
 
     applyResolution(name, ratio) {
