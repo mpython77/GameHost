@@ -180,8 +180,27 @@
           const active = $('.res-btn.active');
           if (active && active.dataset.ratio !== 'auto') {
             this.applyResolution(active.dataset.ratio, ratios[active.dataset.ratio]);
+          } else {
+            // Auto mode: the wrapper changed size (e.g. rotation / fullscreen),
+            // so make the game refit to the full area too.
+            this.notifyGameResize();
           }
         }, 100);
+      });
+
+      // Entering/leaving fullscreen changes the available area; refit the game
+      // (and re-apply any active aspect-ratio box) once the layout settles.
+      ['fullscreenchange', 'webkitfullscreenchange'].forEach((ev) => {
+        document.addEventListener(ev, () => {
+          setTimeout(() => {
+            const active = $('.res-btn.active');
+            if (active && active.dataset.ratio !== 'auto') {
+              this.applyResolution(active.dataset.ratio, ratios[active.dataset.ratio]);
+            } else {
+              this.notifyGameResize();
+            }
+          }, 120);
+        });
       });
     },
 
@@ -191,7 +210,12 @@
       // Reset first
       c.style.width = c.style.height = c.style.maxWidth = c.style.maxHeight = c.style.aspectRatio = '';
       c.classList.remove('resolution-active');
-      if (name === 'auto' || !ratio) return;
+
+      if (name === 'auto' || !ratio) {
+        // Back to full-area: let the game refit to the whole wrapper.
+        this.notifyGameResize();
+        return;
+      }
 
       c.classList.add('resolution-active');
       const r = w.getBoundingClientRect();
@@ -210,6 +234,39 @@
       }
       c.style.width = Math.round(width) + 'px';
       c.style.height = Math.round(height) + 'px';
+
+      // The container box resized, but many HTML5/Cocos playable ads only
+      // refit their canvas when their OWN window receives a 'resize'. When we
+      // change the iframe box via CSS the browser doesn't always deliver that
+      // reliably (especially mid CSS-transition), so the game keeps its old
+      // size and overflows the smaller box. Force it to refit.
+      this.notifyGameResize();
+    },
+
+    /**
+     * Force the embedded game to recompute its canvas size so it shrinks/grows
+     * to fill the current iframe box instead of overflowing it.
+     *
+     * HTML5 playable ads (Cocos Creator, Construct, GameMaker, plain canvas)
+     * listen for a 'resize' on their own window. We dispatch it ourselves
+     * because a CSS-driven iframe resize isn't always delivered reliably.
+     * Fires immediately and again after the 0.4s CSS size transition.
+     * Same-origin only — cross-origin games fall back to the native resize.
+     */
+    notifyGameResize() {
+      const iframe = $('#game-iframe');
+      if (!iframe) return;
+      const fire = () => {
+        try {
+          const win = iframe.contentWindow;
+          if (win) win.dispatchEvent(new Event('resize'));
+        } catch {
+          /* cross-origin game: the browser's native resize event handles it */
+        }
+      };
+      fire();
+      setTimeout(fire, 80);
+      setTimeout(fire, 460); // after the CSS width/height transition (~0.4s)
     },
 
     toggleFullscreen() {
