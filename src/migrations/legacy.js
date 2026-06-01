@@ -84,48 +84,24 @@ function migrateLegacyConfig(db) {
   }
 }
 
+// Minimal style injected into every game's index.html.
+// We only hide Cocos default chrome (header/footer) and set a black body
+// background. We intentionally do NOT override canvas or container dimensions —
+// Cocos Creator manages those itself and responds to window.resize events.
+// Overriding canvas width/height with CSS breaks the resize logic and causes
+// distorted/stretched layouts when the aspect-ratio box changes size.
 const STYLE_TAG = `
 <style id="gamehost-injected-style">
-  /* Hide default Cocos Creator headers/footers */
-  #header, .header, #footer, .footer {
+  /* Hide default Cocos Creator navigation chrome */
+  #header, .header, #footer, .footer, nav, #nav {
     display: none !important;
   }
-  
-  /* Force responsive full-screen canvas layout */
+  /* Clean body reset — let the game fill its iframe */
   html, body {
-    width: 100% !important;
-    height: 100% !important;
     margin: 0 !important;
     padding: 0 !important;
     overflow: hidden !important;
-    background-color: #000 !important;
     background: #000 !important;
-  }
-  
-  #Cocos2dGameContainer, #GameDiv {
-    width: 100% !important;
-    height: 100% !important;
-    margin: 0 !important;
-    padding: 0 !important;
-    position: absolute !important;
-    left: 0 !important;
-    top: 0 !important;
-    background-color: #000 !important;
-    background: #000 !important;
-  }
-  
-  #GameCanvas, canvas {
-    width: 100% !important;
-    height: 100% !important;
-    max-width: 100% !important;
-    max-height: 100% !important;
-    display: block !important;
-  }
-  
-  /* Make all container elements transparent to avoid white backgrounds */
-  div, p, span, a {
-    background-color: transparent !important;
-    background: transparent !important;
   }
 </style>
 `;
@@ -141,17 +117,21 @@ function injectStylesToAllGames() {
       const indexPath = path.join(gamesDir, entry.name, 'index.html');
       if (fs.existsSync(indexPath)) {
         let html = fs.readFileSync(indexPath, 'utf8');
-        if (!html.includes('id="gamehost-injected-style"')) {
-          if (html.includes('</head>')) {
-            html = html.replace('</head>', `${STYLE_TAG}</head>`);
-          } else if (html.includes('<body>')) {
-            html = html.replace('<body>', `<body>${STYLE_TAG}`);
-          } else {
-            html = STYLE_TAG + html;
-          }
-          fs.writeFileSync(indexPath, html, 'utf8');
-          logger.info('legacy.style_injected', { folder: entry.name });
+        // Replace existing injected style (if any) so updated templates apply.
+        // Also inject fresh if not yet present.
+        if (html.includes('id="gamehost-injected-style"')) {
+          // Remove the old tag entirely, then re-inject below.
+          html = html.replace(/<style id="gamehost-injected-style">[\s\S]*?<\/style>/i, '');
         }
+        if (html.includes('</head>')) {
+          html = html.replace('</head>', `${STYLE_TAG}</head>`);
+        } else if (html.includes('<body>')) {
+          html = html.replace('<body>', `<body>${STYLE_TAG}`);
+        } else {
+          html = STYLE_TAG + html;
+        }
+        fs.writeFileSync(indexPath, html, 'utf8');
+        logger.info('legacy.style_injected', { folder: entry.name });
       }
     }
   } catch (err) {
