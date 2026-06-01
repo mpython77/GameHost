@@ -136,6 +136,7 @@
                 margin: 0 !important;
                 padding: 0 !important;
                 overflow: hidden !important;
+                background-color: #000 !important;
               }
               #Cocos2dGameContainer, #GameDiv {
                 width: 100% !important;
@@ -145,13 +146,14 @@
                 position: absolute !important;
                 left: 0 !important;
                 top: 0 !important;
+                background-color: #000 !important;
               }
               #GameCanvas, canvas {
                 width: 100% !important;
                 height: 100% !important;
                 max-width: 100% !important;
                 max-height: 100% !important;
-                object-fit: contain !important;
+                display: block !important;
               }
             `;
             doc.head.appendChild(style);
