@@ -863,6 +863,7 @@ ul, ol {
   height: 100%;
   border: none;
   display: block;
+  overflow: hidden;
 }
 
 /* Loading Screen */
@@ -1014,6 +1015,7 @@ ul, ol {
   height: 100%;
   border: none;
   display: block;
+  overflow: hidden;
 }
 
 .iframe-container.resolution-active {
