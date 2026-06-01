@@ -121,39 +121,24 @@
           fetch('/api/games/' + this.current.id + '/play', { method: 'POST' }).catch(() => {});
         }
 
-        // Force iframe content to scale responsively and hide default Cocos headers/footers
+        // Inject minimal styles: hide Cocos headers/footers, set black background.
+        // We intentionally do NOT override canvas/GameCanvas dimensions — Cocos Creator
+        // manages its own canvas size and fires window.resize to re-fit. Overriding
+        // canvas width/height with CSS fights that logic and causes distorted layouts
+        // when the aspect-ratio box changes size.
         try {
           const doc = iframe.contentDocument || iframe.contentWindow.document;
           if (doc) {
             const style = doc.createElement('style');
             style.textContent = `
-              #header, .header, #footer, .footer {
+              #header, .header, #footer, .footer, nav, #nav {
                 display: none !important;
               }
               html, body {
-                width: 100% !important;
-                height: 100% !important;
                 margin: 0 !important;
                 padding: 0 !important;
                 overflow: hidden !important;
-                background-color: #000 !important;
-              }
-              #Cocos2dGameContainer, #GameDiv {
-                width: 100% !important;
-                height: 100% !important;
-                margin: 0 !important;
-                padding: 0 !important;
-                position: absolute !important;
-                left: 0 !important;
-                top: 0 !important;
-                background-color: #000 !important;
-              }
-              #GameCanvas, canvas {
-                width: 100% !important;
-                height: 100% !important;
-                max-width: 100% !important;
-                max-height: 100% !important;
-                display: block !important;
+                background: #000 !important;
               }
             `;
             doc.head.appendChild(style);

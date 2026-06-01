@@ -207,46 +207,16 @@ class UploadService {
       let html = fs.readFileSync(indexPath, 'utf8');
       const styleTag = `
 <style id="gamehost-injected-style">
-  /* Hide default Cocos Creator headers/footers */
-  #header, .header, #footer, .footer {
+  /* Hide default Cocos Creator navigation chrome */
+  #header, .header, #footer, .footer, nav, #nav {
     display: none !important;
   }
-  
-  /* Force responsive full-screen canvas layout */
+  /* Clean body reset — let the game fill its iframe naturally */
   html, body {
-    width: 100% !important;
-    height: 100% !important;
     margin: 0 !important;
     padding: 0 !important;
     overflow: hidden !important;
-    background-color: #000 !important;
     background: #000 !important;
-  }
-  
-  #Cocos2dGameContainer, #GameDiv {
-    width: 100% !important;
-    height: 100% !important;
-    margin: 0 !important;
-    padding: 0 !important;
-    position: absolute !important;
-    left: 0 !important;
-    top: 0 !important;
-    background-color: #000 !important;
-    background: #000 !important;
-  }
-  
-  #GameCanvas, canvas {
-    width: 100% !important;
-    height: 100% !important;
-    max-width: 100% !important;
-    max-height: 100% !important;
-    display: block !important;
-  }
-  
-  /* Make all container elements transparent to avoid white backgrounds */
-  div, p, span, a {
-    background-color: transparent !important;
-    background: transparent !important;
   }
 </style>
 `;
