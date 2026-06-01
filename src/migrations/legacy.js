@@ -84,9 +84,85 @@ function migrateLegacyConfig(db) {
   }
 }
 
+const STYLE_TAG = `
+<style id="gamehost-injected-style">
+  /* Hide default Cocos Creator headers/footers */
+  #header, .header, #footer, .footer {
+    display: none !important;
+  }
+  
+  /* Force responsive full-screen canvas layout */
+  html, body {
+    width: 100% !important;
+    height: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: hidden !important;
+    background-color: #000 !important;
+    background: #000 !important;
+  }
+  
+  #Cocos2dGameContainer, #GameDiv {
+    width: 100% !important;
+    height: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    position: absolute !important;
+    left: 0 !important;
+    top: 0 !important;
+    background-color: #000 !important;
+    background: #000 !important;
+  }
+  
+  #GameCanvas, canvas {
+    width: 100% !important;
+    height: 100% !important;
+    max-width: 100% !important;
+    max-height: 100% !important;
+    display: block !important;
+  }
+  
+  /* Make all container elements transparent to avoid white backgrounds */
+  div, p, span, a {
+    background-color: transparent !important;
+    background: transparent !important;
+  }
+</style>
+`;
+
+function injectStylesToAllGames() {
+  const gamesDir = config.GAMES_DIR;
+  if (!fs.existsSync(gamesDir)) return;
+
+  try {
+    const entries = fs.readdirSync(gamesDir, { withFileTypes: true });
+    for (const entry of entries) {
+      if (!entry.isDirectory()) continue;
+      const indexPath = path.join(gamesDir, entry.name, 'index.html');
+      if (fs.existsSync(indexPath)) {
+        let html = fs.readFileSync(indexPath, 'utf8');
+        if (!html.includes('id="gamehost-injected-style"')) {
+          if (html.includes('</head>')) {
+            html = html.replace('</head>', `${STYLE_TAG}</head>`);
+          } else if (html.includes('<body>')) {
+            html = html.replace('<body>', `<body>${STYLE_TAG}`);
+          } else {
+            html = STYLE_TAG + html;
+          }
+          fs.writeFileSync(indexPath, html, 'utf8');
+          logger.info('legacy.style_injected', { folder: entry.name });
+        }
+      }
+    }
+  } catch (err) {
+    logger.warn('legacy.style_injection_failed', { error: err.message });
+  }
+}
+
 function runAll(db) {
   migrateLegacyGameFiles();
   migrateLegacyConfig(db);
+  injectStylesToAllGames();
 }
 
-module.exports = { runAll, migrateLegacyGameFiles, migrateLegacyConfig };
+module.exports = { runAll, migrateLegacyGameFiles, migrateLegacyConfig, injectStylesToAllGames };
