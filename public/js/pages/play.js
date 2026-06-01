@@ -120,6 +120,46 @@
           tracked = true;
           fetch('/api/games/' + this.current.id + '/play', { method: 'POST' }).catch(() => {});
         }
+
+        // Force iframe content to scale responsively and hide default Cocos headers/footers
+        try {
+          const doc = iframe.contentDocument || iframe.contentWindow.document;
+          if (doc) {
+            const style = doc.createElement('style');
+            style.textContent = `
+              #header, .header, #footer, .footer {
+                display: none !important;
+              }
+              html, body {
+                width: 100% !important;
+                height: 100% !important;
+                margin: 0 !important;
+                padding: 0 !important;
+                overflow: hidden !important;
+              }
+              #Cocos2dGameContainer, #GameDiv {
+                width: 100% !important;
+                height: 100% !important;
+                margin: 0 !important;
+                padding: 0 !important;
+                position: absolute !important;
+                left: 0 !important;
+                top: 0 !important;
+              }
+              #GameCanvas, canvas {
+                width: 100% !important;
+                height: 100% !important;
+                max-width: 100% !important;
+                max-height: 100% !important;
+                object-fit: contain !important;
+              }
+            `;
+            doc.head.appendChild(style);
+          }
+        } catch (e) {
+          console.warn('Iframe styles could not be injected (cross-origin or inaccessible):', e.message);
+        }
+
         // Fire resize after load so the game fills the iframe from the start.
         this.notifyGameResize();
       });
