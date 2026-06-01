@@ -105,10 +105,6 @@
       const iframe = $('#game-iframe');
       const loading = $('#player-loading');
       const v = this.current.uploadedAt || this.current.createdAt || Date.now();
-      // Build the game URL. When GH_RUNTIME.gamesBaseUrl is set (a separate
-      // origin), the iframe loads cross-origin and is fully isolated from
-      // this page. When empty, games are served from this same origin.
-      // gamesBaseUrl has no trailing slash (server strips it).
       const base = (window.GH_RUNTIME && window.GH_RUNTIME.gamesBaseUrl) || '';
       const src = `${base}/games/${this.current.folder}/index.html?v=${v}`;
       let tracked = false;
@@ -120,34 +116,7 @@
           tracked = true;
           fetch('/api/games/' + this.current.id + '/play', { method: 'POST' }).catch(() => {});
         }
-
-        // Inject minimal styles: hide Cocos headers/footers, set black background.
-        // We intentionally do NOT override canvas/GameCanvas dimensions — Cocos Creator
-        // manages its own canvas size and fires window.resize to re-fit. Overriding
-        // canvas width/height with CSS fights that logic and causes distorted layouts
-        // when the aspect-ratio box changes size.
-        try {
-          const doc = iframe.contentDocument || iframe.contentWindow.document;
-          if (doc) {
-            const style = doc.createElement('style');
-            style.textContent = `
-              #header, .header, #footer, .footer, nav, #nav {
-                display: none !important;
-              }
-              html, body {
-                margin: 0 !important;
-                padding: 0 !important;
-                overflow: hidden !important;
-                background: #000 !important;
-              }
-            `;
-            doc.head.appendChild(style);
-          }
-        } catch (e) {
-          console.warn('Iframe styles could not be injected (cross-origin or inaccessible):', e.message);
-        }
-
-        // Fire resize after load so the game fills the iframe from the start.
+        // Let the game settle, then tell it the viewport size.
         this.notifyGameResize();
       });
       iframe.addEventListener('error', () => {
@@ -177,6 +146,9 @@
       this.setupResolutionSelector();
     },
 
+    /* ──────────────────────────────────────────────────────────────────
+     *  Resolution selector — complete rewrite
+     * ────────────────────────────────────────────────────────────────── */
     setupResolutionSelector() {
       const ratios = {
         'auto': null, '16:9': 16 / 9, '9:16': 9 / 16,
@@ -188,12 +160,19 @@
       };
       const buttons = $$('.res-btn');
 
+      // Track what's selected (null = auto).
+      this._activeRatioName = 'auto';
+      this._activeRatioValue = null;
+
       buttons.forEach((btn) => {
         btn.addEventListener('click', () => {
           const r = btn.dataset.ratio;
           buttons.forEach((b) => b.classList.remove('active'));
           btn.classList.add('active');
-          this.applyResolution(r, ratios[r]);
+          this._activeRatioName = r;
+          this._activeRatioValue = ratios[r] || null;
+          this.applyResolution();
+
           const info = $('#resolution-info');
           info.textContent = labels[r] || r;
           info.classList.add('visible');
@@ -202,116 +181,110 @@
         });
       });
 
+      // Re-apply on window resize (e.g. browser window resized, orientation change).
       let resizeTimer;
       window.addEventListener('resize', () => {
         clearTimeout(resizeTimer);
-        resizeTimer = setTimeout(() => {
-          const active = $('.res-btn.active');
-          if (active && active.dataset.ratio !== 'auto') {
-            this.applyResolution(active.dataset.ratio, ratios[active.dataset.ratio]);
-          } else {
-            // Auto mode: the wrapper changed size (e.g. rotation / fullscreen),
-            // so make the game refit to the full area too.
-            this.notifyGameResize();
-          }
-        }, 100);
+        resizeTimer = setTimeout(() => this.applyResolution(), 80);
       });
 
-      // Entering/leaving fullscreen changes the available area; refit the game
-      // (and re-apply any active aspect-ratio box) once the layout settles.
+      // Re-apply when entering/leaving fullscreen.
       ['fullscreenchange', 'webkitfullscreenchange'].forEach((ev) => {
         document.addEventListener(ev, () => {
-          setTimeout(() => {
-            const active = $('.res-btn.active');
-            if (active && active.dataset.ratio !== 'auto') {
-              this.applyResolution(active.dataset.ratio, ratios[active.dataset.ratio]);
-            } else {
-              this.notifyGameResize();
-            }
-          }, 120);
+          setTimeout(() => this.applyResolution(), 100);
         });
       });
     },
 
-    applyResolution(name, ratio) {
-      const c = $('#iframe-container');
-      const w = $('#player-frame-wrapper');
-      const iframe = $('#game-iframe');
+    /* ──────────────────────────────────────────────────────────────────
+     *  applyResolution — complete rewrite
+     *
+     *  How it works:
+     *    Auto mode:
+     *      - Container has CSS `inset: 0` → fills the wrapper 100%.
+     *      - Remove inline styles + resolution-active class.
+     *
+     *    Ratio mode:
+     *      - Calculate the largest box at the requested aspect ratio
+     *        that fits within the wrapper (letterbox, never crop).
+     *      - Set explicit px width/height on the container.
+     *      - Add .resolution-active class → CSS centers it via
+     *        absolute + translate(-50%, -50%).
+     *      - Iframe fills the container 100% (CSS rule).
+     *
+     *    After any mode change, fire resize into the iframe so the game
+     *    engine (Cocos, etc.) knows its viewport changed.
+     * ────────────────────────────────────────────────────────────────── */
+    applyResolution() {
+      const container = $('#iframe-container');
+      const wrapper = $('#player-frame-wrapper');
+      const ratio = this._activeRatioValue;
 
-      // Clear all inline overrides from any previous selection.
-      c.style.width = '';
-      c.style.height = '';
-      iframe.style.width = '';
-      iframe.style.height = '';
-      iframe.style.transform = '';
-      iframe.style.transformOrigin = '';
-      c.classList.remove('resolution-active');
-      this._activeRatio = (name === 'auto' || !ratio) ? null : ratio;
+      // ── Reset all inline styles first ──
+      container.style.cssText = '';
+      container.classList.remove('resolution-active');
 
-      if (!this._activeRatio) {
-        // Auto — iframe fills the whole wrapper via CSS (width/height 100%).
-        // Fire resize so Cocos/canvas games re-fit to the full area.
+      if (!ratio) {
+        // Auto mode — CSS `inset: 0` makes the container fill the wrapper.
         this.notifyGameResize();
         return;
       }
 
-      // ── Fixed aspect-ratio mode ──────────────────────────────────────────
-      // 1. Calculate the largest box that fits the available area at the
-      //    requested ratio (letterboxed, never cropped, 8px gutter).
-      const r = w.getBoundingClientRect();
-      const availW = Math.max(1, r.width  - 8);
-      const availH = Math.max(1, r.height - 8);
+      // ── Ratio mode ──
+      // Measure available space (the wrapper's actual rendered size).
+      const rect = wrapper.getBoundingClientRect();
+      const availW = rect.width;
+      const availH = rect.height;
+      if (availW < 1 || availH < 1) return;
 
+      // Calculate largest box at the requested ratio (letterbox fit).
       let boxW, boxH;
       if (availW / availH > ratio) {
+        // Wrapper is wider than requested ratio → height-constrained.
         boxH = availH;
         boxW = boxH * ratio;
       } else {
+        // Wrapper is taller → width-constrained.
         boxW = availW;
         boxH = boxW / ratio;
       }
       boxW = Math.round(boxW);
       boxH = Math.round(boxH);
 
-      // 2. Size the container to the box. CSS keeps it centered via
-      //    flex + margin:auto on .resolution-active.
-      c.classList.add('resolution-active');
-      c.style.width  = boxW + 'px';
-      c.style.height = boxH + 'px';
+      // Apply explicit size on the container. CSS .resolution-active
+      // positions it centered via absolute + translate.
+      container.classList.add('resolution-active');
+      container.style.width  = boxW + 'px';
+      container.style.height = boxH + 'px';
 
-      // 3. The iframe element is always exactly the box size (width/height
-      //    100% of the container via CSS). No transform, no scaling.
-      //    Cocos Creator and other canvas games listen for window.resize and
-      //    re-fit their canvas to the new iframe dimensions automatically.
-      //    Fire the event now and again after the CSS transition settles.
       this.notifyGameResize();
     },
 
-    /**
-     * Force the embedded game to recompute its canvas size.
-     * Cocos Creator and other canvas games listen for window.resize.
-     * We fire it multiple times to catch games that initialize late.
-     */
+    /* ──────────────────────────────────────────────────────────────────
+     *  notifyGameResize — complete rewrite
+     *
+     *  Fires `resize` event into the iframe's window so canvas-based
+     *  games (Cocos Creator, Phaser, etc.) re-measure their viewport.
+     *  We fire multiple times at staggered intervals because some game
+     *  engines initialize late.
+     * ────────────────────────────────────────────────────────────────── */
     notifyGameResize() {
       const iframe = $('#game-iframe');
       if (!iframe) return;
+
       const fire = () => {
         try {
           const win = iframe.contentWindow;
-          if (win) {
-            win.dispatchEvent(new Event('resize'));
-            // Some Cocos versions also listen on document
-            if (win.document) {
-              win.document.dispatchEvent(new Event('resize'));
-            }
-          }
-        } catch { /* cross-origin — browser fires its own resize */ }
+          if (win) win.dispatchEvent(new Event('resize'));
+        } catch { /* cross-origin — nothing we can do */ }
       };
+
+      // Immediate + staggered fires to catch late-initializing engines.
       fire();
       setTimeout(fire, 50);
       setTimeout(fire, 200);
-      setTimeout(fire, 500);
-      setTimeout(fire, 1000); // catch late-initializing games
+      setTimeout(fire, 600);
+      setTimeout(fire, 1200);
     },
 
     /** Current fullscreen element across vendor prefixes (null if not fullscreen). */
