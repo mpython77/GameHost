@@ -692,7 +692,7 @@ ul, ol {
 .share-btn:hover {
   background: rgba(124, 58, 237, 0.15);
   border-color: rgba(124, 58, 237, 0.4);
-  color: var(--accent-purple);
+  color: var(--accent-primary-light);
   transform: translateY(-1px);
 }
 
