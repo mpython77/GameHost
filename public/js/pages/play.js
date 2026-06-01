@@ -120,6 +120,8 @@
           tracked = true;
           fetch('/api/games/' + this.current.id + '/play', { method: 'POST' }).catch(() => {});
         }
+        // Fire resize after load so the game fills the iframe from the start.
+        this.notifyGameResize();
       });
       iframe.addEventListener('error', () => {
         loading.innerHTML = `<div class="loading-text" style="color:#ef4444;">${I18N.t('player.gameError')}</div>`;
@@ -208,28 +210,31 @@
       const c = $('#iframe-container');
       const w = $('#player-frame-wrapper');
       const iframe = $('#game-iframe');
-      // Reset any inline sizing/transform from a previous selection.
-      c.style.width = c.style.height = c.style.maxWidth = c.style.maxHeight = c.style.aspectRatio = '';
-      iframe.style.width = iframe.style.height = iframe.style.transform = '';
+
+      // Clear all inline overrides from any previous selection.
+      c.style.width = '';
+      c.style.height = '';
+      iframe.style.width = '';
+      iframe.style.height = '';
+      iframe.style.transform = '';
+      iframe.style.transformOrigin = '';
       c.classList.remove('resolution-active');
       this._activeRatio = (name === 'auto' || !ratio) ? null : ratio;
 
       if (!this._activeRatio) {
-        // Auto: iframe fills the whole wrapper (CSS handles 100%/100%).
+        // Auto — iframe fills the whole wrapper via CSS (width/height 100%).
+        // Fire resize so Cocos/canvas games re-fit to the full area.
         this.notifyGameResize();
         return;
       }
 
-      c.classList.add('resolution-active');
-
-      // Available area inside the wrapper (minus a small gutter so the
-      // framed game never touches the toolbar / screen edges).
+      // ── Fixed aspect-ratio mode ──────────────────────────────────────────
+      // 1. Calculate the largest box that fits the available area at the
+      //    requested ratio (letterboxed, never cropped, 8px gutter).
       const r = w.getBoundingClientRect();
-      const availW = Math.max(1, r.width - 16);
-      const availH = Math.max(1, r.height - 16);
+      const availW = Math.max(1, r.width  - 8);
+      const availH = Math.max(1, r.height - 8);
 
-      // Final on-screen box that preserves the requested aspect ratio and
-      // fits entirely within the available area (letterboxed, never cropped).
       let boxW, boxH;
       if (availW / availH > ratio) {
         boxH = availH;
@@ -241,108 +246,24 @@
       boxW = Math.round(boxW);
       boxH = Math.round(boxH);
 
-      // The visible frame (container) is exactly the aspect-ratio box and is
-      // centered by the flex wrapper (+ margin:auto). The GAME inside is fit
-      // by _fitGameToBox(), which handles BOTH game types:
-      //   • responsive games  → iframe element is sized to the box; the game
-      //     re-lays-out to fill it (a 'resize' is dispatched).
-      //   • fixed-size games  → the iframe is sized to the game's intrinsic
-      //     content size, then transform-scaled so the WHOLE game fits the
-      //     box (no clipping, no internal scrollbars).
-      c.style.width = boxW + 'px';
+      // 2. Size the container to the box. CSS keeps it centered via
+      //    flex + margin:auto on .resolution-active.
+      c.classList.add('resolution-active');
+      c.style.width  = boxW + 'px';
       c.style.height = boxH + 'px';
-      this._fitGameToBox(boxW, boxH);
-    },
 
-    /**
-     * Fit the embedded game into a boxW×boxH frame.
-     *
-     * Strategy:
-     *   1. First make the iframe element exactly the box size and ask the
-     *      game to re-fit (covers responsive/Cocos games — no scaling needed).
-     *   2. Then, for SAME-ORIGIN games, measure the real rendered content
-     *      size. If it overflows the box (a fixed-size game that ignored the
-     *      resize), size the iframe to the content's natural dimensions and
-     *      apply transform:scale so the entire game is shrunk to fit the box.
-     *      Cross-origin games can't be measured → they keep the box-sized
-     *      iframe and rely on their own resize handling.
-     */
-    _fitGameToBox(boxW, boxH) {
-      const iframe = $('#game-iframe');
-      if (!iframe) return;
-
-      // Step 1 — iframe element fills the box; nudge resize-aware games.
-      iframe.style.width = boxW + 'px';
-      iframe.style.height = boxH + 'px';
-      iframe.style.transform = '';
-      iframe.style.transformOrigin = 'top left';
+      // 3. The iframe element is always exactly the box size (width/height
+      //    100% of the container via CSS). No transform, no scaling.
+      //    Cocos Creator and other canvas games listen for window.resize and
+      //    re-fit their canvas to the new iframe dimensions automatically.
+      //    Fire the event now and again after the CSS transition settles.
       this.notifyGameResize();
-
-      // Step 2 — after the game has had a moment to lay out, check whether it
-      // actually filled the box (responsive) or stayed at a fixed size that
-      // overflows (needs scaling). Re-checked after the CSS transition too.
-      const measureAndScale = () => {
-        // Only the currently-active ratio frame should be adjusted.
-        if (!this._activeRatio) return;
-        let doc;
-        try {
-          doc = iframe.contentDocument;
-        } catch {
-          doc = null; // cross-origin — cannot measure, leave box-sized.
-        }
-        if (!doc || !doc.documentElement) return;
-
-        // Intrinsic content size the game wants to occupy.
-        const de = doc.documentElement;
-        const body = doc.body;
-        const contentW = Math.max(
-          de.scrollWidth, body ? body.scrollWidth : 0,
-          de.offsetWidth, body ? body.offsetWidth : 0
-        );
-        const contentH = Math.max(
-          de.scrollHeight, body ? body.scrollHeight : 0,
-          de.offsetHeight, body ? body.offsetHeight : 0
-        );
-        if (!contentW || !contentH) return;
-
-        // Tolerance: if the content already fits the box (responsive game
-        // that filled it), leave the simple box-sized iframe alone.
-        if (contentW <= boxW + 2 && contentH <= boxH + 2) {
-          iframe.style.width = boxW + 'px';
-          iframe.style.height = boxH + 'px';
-          iframe.style.transform = '';
-          return;
-        }
-
-        // Fixed-size (or oversized) game → render the iframe at the game's
-        // natural size and scale the whole thing down to fit the box.
-        const scale = Math.min(boxW / contentW, boxH / contentH);
-        iframe.style.width = contentW + 'px';
-        iframe.style.height = contentH + 'px';
-        iframe.style.transform = `scale(${scale})`;
-        // Center the scaled content within the box: the scaled footprint is
-        // contentW*scale × contentH*scale; offset by the leftover halves.
-        const offX = Math.max(0, (boxW - contentW * scale) / 2);
-        const offY = Math.max(0, (boxH - contentH * scale) / 2);
-        iframe.style.transformOrigin = 'top left';
-        iframe.style.transform = `translate(${offX}px, ${offY}px) scale(${scale})`;
-      };
-
-      // Measure a few times: immediately-ish, and after the box transition,
-      // so late-laying-out games are caught.
-      setTimeout(measureAndScale, 90);
-      setTimeout(measureAndScale, 480);
     },
 
     /**
-     * Force the embedded game to recompute its canvas size so it shrinks/grows
-     * to fill the current iframe box instead of overflowing it.
-     *
-     * HTML5 playable ads (Cocos Creator, Construct, GameMaker, plain canvas)
-     * listen for a 'resize' on their own window. We dispatch it ourselves
-     * because a CSS-driven iframe resize isn't always delivered reliably.
-     * Fires immediately and again after the 0.4s CSS size transition.
-     * Same-origin only — cross-origin games fall back to the native resize.
+     * Force the embedded game to recompute its canvas size.
+     * Cocos Creator and other canvas games listen for window.resize.
+     * We fire it multiple times to catch games that initialize late.
      */
     notifyGameResize() {
       const iframe = $('#game-iframe');
@@ -350,14 +271,20 @@
       const fire = () => {
         try {
           const win = iframe.contentWindow;
-          if (win) win.dispatchEvent(new Event('resize'));
-        } catch {
-          /* cross-origin game: the browser's native resize event handles it */
-        }
+          if (win) {
+            win.dispatchEvent(new Event('resize'));
+            // Some Cocos versions also listen on document
+            if (win.document) {
+              win.document.dispatchEvent(new Event('resize'));
+            }
+          }
+        } catch { /* cross-origin — browser fires its own resize */ }
       };
       fire();
-      setTimeout(fire, 80);
-      setTimeout(fire, 460); // after the CSS width/height transition (~0.4s)
+      setTimeout(fire, 50);
+      setTimeout(fire, 200);
+      setTimeout(fire, 500);
+      setTimeout(fire, 1000); // catch late-initializing games
     },
 
     /** Current fullscreen element across vendor prefixes (null if not fullscreen). */

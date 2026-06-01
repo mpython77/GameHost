@@ -692,7 +692,7 @@ ul, ol {
 .share-btn:hover {
   background: rgba(124, 58, 237, 0.15);
   border-color: rgba(124, 58, 237, 0.4);
-  color: var(--accent-purple);
+  color: var(--accent-primary-light);
   transform: translateY(-1px);
 }
 
@@ -1017,11 +1017,7 @@ ul, ol {
 }
 
 .iframe-container.resolution-active {
-  /* Fixed-ratio mode: the container is sized by JS to the SCALED footprint
-     of the game, and the iframe inside is rendered at a real design
-     resolution then transform-scaled to fit. `display:block` (not flex) so
-     the scaled iframe — anchored top-left — fills the box exactly, and
-     `margin:auto` keeps the whole box centered inside the flex wrapper. */
+  /* JS sets explicit px width/height; flex wrapper + margin:auto centers it. */
   display: block;
   margin: auto;
   flex: 0 0 auto;
@@ -1035,11 +1031,12 @@ ul, ol {
 }
 
 .iframe-container.resolution-active .player-iframe {
-  /* width/height + transform are set inline by JS (_fitGameToBox). The frame
-     clips any overflow so a fixed-size game scaled to fit shows no scrollbars. */
-  transform-origin: top left;
+  /* Always fill the container box — no transform, no inline size override.
+     Cocos/canvas games re-fit their canvas when they receive window.resize. */
+  width: 100% !important;
+  height: 100% !important;
+  transform: none !important;
   border-radius: inherit;
-  transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 /* ---------- Resolution Info Badge ---------- */
